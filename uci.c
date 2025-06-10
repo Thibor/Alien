@@ -104,7 +104,11 @@ void ParsePosition(char* lineIn, S_BOARD *pos) {
               ptrChar++;
         }
     }
-	PrintBoard(pos);
+	//PrintBoard(pos);
+}
+
+void PrintWelcome() {
+	printf("%s\n", NAME);
 }
 
 void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info) {
@@ -113,13 +117,10 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info) {
     setbuf(stdout, NULL);
 
 	char line[INPUTBUFFER];
-//printf("id name %s\n",NAME);
- //printf("id author Bctboi23\n");
-//printf("option name Hash type spin default 256 min 4 max %d\n",MAX_HASH);
-  //printf("uciok\n\n");
 
 	int MB = 256;
-
+	PrintWelcome();
+	ParseFen(START_FEN, pos);
 	while (TRUE) {
 		memset(&line[0], 0, sizeof(line));
         fflush(stdout);
@@ -146,9 +147,13 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info) {
             printf("id name %s\n",NAME);
 			printf("option name Hash type spin default 256 min 4 max %d\n", MAX_HASH);
             printf("uciok\n");
-        } else if (!strncmp(line, "debug", 4)) {
-            DebugAnalysisTest(pos,info);
-            break;
+		}
+		else if (!strncmp(line, "print", 5)) {
+			PrintBoard(pos);
+		}
+		else if (!strncmp(line, "debug", 5)) {
+			DebugAnalysisTest(pos, info);
+			break;
         } else if (!strncmp(line, "setoption name Hash value ", 26)) {
 			sscanf(line,"%*s %*s %*s %*s %d",&MB);
 			if(MB < 4) MB = 4;
