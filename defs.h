@@ -312,6 +312,7 @@ extern int ProbeHashEntry(S_BOARD *pos, int *move, int *score, int alpha, int be
 extern int ProbePvMove(const S_BOARD *pos);
 extern int GetPvLine(const int depth, S_BOARD *pos);
 extern void ClearHashTable(S_HASHTABLE *table);
+extern int Permill(S_HASHTABLE* table);
 
 // evaluate.c
 extern int EvalPosition(S_BOARD *pos);
@@ -322,6 +323,5 @@ extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
 
 // xboard.c
 extern void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info);
-extern void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info);
 
 #endif
