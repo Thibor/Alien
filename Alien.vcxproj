@@ -122,7 +122,7 @@
     <ClCompile Include="attack.c" />
     <ClCompile Include="bitboards.c" />
     <ClCompile Include="board.c" />
-    <ClCompile Include="CeeChess.c" />
+    <ClCompile Include="main.c" />
     <ClCompile Include="data.c" />
     <ClCompile Include="evaluate.c" />
     <ClCompile Include="hashkeys.c" />

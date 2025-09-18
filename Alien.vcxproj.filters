@@ -24,7 +24,7 @@
     <ClCompile Include="board.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CeeChess.c">
+    <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="data.c">
@@ -64,9 +64,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="validate.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="xboard.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
