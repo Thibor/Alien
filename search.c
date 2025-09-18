@@ -431,9 +431,6 @@ void SearchPosition(S_BOARD* pos, S_SEARCHINFO* info) {
 			printf(" %s", PrMove(pos->PvArray[pvNum]));
 		}
 		printf("\n");
-
-		//printf("Hits:%d Overwrite:%d NewWrite:%d Cut:%d\nOrdering %.2f NullCut:%d",pos->HashTable->hit,pos->HashTable->overWrite,pos->HashTable->newWrite,pos->HashTable->cut,
-		//(info->fhf/info->fh)*100,info->nullCut);
 	}
 
 	printf("bestmove %s\n", PrMove(bestMove));

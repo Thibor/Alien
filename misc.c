@@ -6,7 +6,7 @@
 
 int GetTimeMs() {
 #ifdef WIN32
-  return GetTickCount();
+  return GetTickCount64();
 #else
   struct timeval t;
   gettimeofday(&t, NULL);
@@ -15,9 +15,7 @@ int GetTimeMs() {
 }
 
 
-// http://home.arcor.de/dreamlike/chess/
-int InputWaiting()
-{
+static int InputWaiting(){
 #ifndef WIN32
   fd_set readfds;
   struct timeval tv;
