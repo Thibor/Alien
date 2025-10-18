@@ -3,25 +3,6 @@
 #include "stdio.h"
 #include "defs.h"
 
-int PceListOk(const S_BOARD *pos) {
-	int pce = wP;
-	int sq;
-	int num;
-	for(pce = wP; pce <= bK; ++pce) {
-		if(pos->pceNum[pce]<0 || pos->pceNum[pce]>=10) return FALSE;
-	}
-
-	if(pos->pceNum[wK]!=1 || pos->pceNum[bK]!=1) return FALSE;
-
-	for(pce = wP; pce <= bK; ++pce) {
-		for(num = 0; num < pos->pceNum[pce]; ++num) {
-			sq = pos->pList[pce][num];
-			if(!SqOnBoard(sq)) return FALSE;
-		}
-	}
-    return TRUE;
-}
-
 int CheckBoard(const S_BOARD *pos) {
 
 	int t_pceNum[13] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -102,8 +83,6 @@ int CheckBoard(const S_BOARD *pos) {
 	ASSERT(pos->pieces[pos->KingSq[BLACK]] == bK);
 
 	ASSERT(pos->castlePerm >= 0 && pos->castlePerm <= 15);
-
-	ASSERT(PceListOk(pos));
 
 	return TRUE;
 }

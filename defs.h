@@ -24,6 +24,8 @@ exit(1);}
 typedef unsigned long long U64;
 
 #define NAME "Alien"
+#define VERSION "2025-09-25"
+
 #define BRD_SQ_NUM 120
 
 #define MAXGAMEMOVES 2048
@@ -294,9 +296,6 @@ extern void TakeMove(S_BOARD *pos);
 extern void MakeNullMove(S_BOARD *pos);
 extern void TakeNullMove(S_BOARD *pos);
 
-// perft.c
-extern void PerftTest(int depth, S_BOARD *pos);
-
 // search.c
 extern void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info);
 extern void InitSearch();
@@ -320,8 +319,5 @@ extern void MirrorEvalTest(S_BOARD *pos) ;
 
 // uci.c
 extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
-
-// xboard.c
-extern void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info);
 
 #endif

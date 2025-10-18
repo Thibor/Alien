@@ -15,7 +15,6 @@ void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 	info->timeset = FALSE;
 
 	if ((ptr = strstr(line, "infinite"))) {
-		;
 	}
 
 	if ((ptr = strstr(line, "binc")) && pos->side == BLACK) {
@@ -70,7 +69,7 @@ void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 	SearchPosition(pos, info);
 }
 
-void ParsePosition(char* lineIn, S_BOARD* pos) {
+static void ParsePosition(char* lineIn, S_BOARD* pos) {
 
 	lineIn += 9;
 	char* ptrChar = lineIn;
@@ -105,8 +104,8 @@ void ParsePosition(char* lineIn, S_BOARD* pos) {
 	}
 }
 
-void PrintWelcome() {
-	printf("%s %s\n", NAME, __DATE__);
+static void PrintWelcome() {
+	printf("%s %s\n", NAME, VERSION);
 }
 
 void Uci_Loop(S_BOARD* pos, S_SEARCHINFO* info) {
@@ -153,10 +152,6 @@ void Uci_Loop(S_BOARD* pos, S_SEARCHINFO* info) {
 		}
 		else if (!strncmp(line, "print", 5)) {
 			PrintBoard(pos);
-		}
-		else if (!strncmp(line, "debug", 5)) {
-			DebugAnalysisTest(pos, info);
-			break;
 		}
 		else if (!strncmp(line, "setoption name Hash value ", 26)) {
 			sscanf(line, "%*s %*s %*s %*s %d", &MB);

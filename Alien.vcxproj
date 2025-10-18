@@ -131,11 +131,9 @@
     <ClCompile Include="makemove.c" />
     <ClCompile Include="misc.c" />
     <ClCompile Include="movegen.c" />
-    <ClCompile Include="perft.c" />
     <ClCompile Include="pvtable.c" />
     <ClCompile Include="search.c" />
     <ClCompile Include="uci.c" />
-    <ClCompile Include="validate.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defs.h" />
