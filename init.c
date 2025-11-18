@@ -1,6 +1,6 @@
 // init.c
 
-#include "defs.h"
+#include "program.h"
 #include "stdio.h"
 #include "stdlib.h"
 

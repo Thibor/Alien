@@ -1,7 +1,7 @@
 // search.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 #include "math.h"
 
 // Null Move Pruning Values
@@ -34,10 +34,9 @@ void InitSearch() {
 
 static void CheckUp(S_SEARCHINFO* info) {
 	// .. check if time up, or interrupt from GUI
-	if (info->timeset == TRUE && GetTimeMs() > info->stoptime) {
+	if ((info->timeset == TRUE && GetTimeMs() > info->stoptime)||
+		(info->nodesLimit && info->nodes > info->nodesLimit))
 		info->stopped = TRUE;
-	}
-
 	ReadInput(info);
 }
 
@@ -397,7 +396,6 @@ void SearchPosition(S_BOARD* pos, S_SEARCHINFO* info) {
 
 	int bestMove = NOMOVE;
 	int bestScore = -INFINITE;
-	int currentDepth = 0;
 	int pvMoves = 0;
 	int pvNum = 0;
 
@@ -406,7 +404,7 @@ void SearchPosition(S_BOARD* pos, S_SEARCHINFO* info) {
 	//printf("Search depth:%d\n",info->depth);
 
 	// iterative deepening
-	for (currentDepth = 1; currentDepth <= info->depth; ++currentDepth) {
+	for (int currentDepth = 1; currentDepth <= info->depthLimit; ++currentDepth) {
 		// alpha	 beta
 		bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, TRUE, TRUE);
 

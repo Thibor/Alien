@@ -1,7 +1,4 @@
-// board.c
-
-#include "stdio.h"
-#include "defs.h"
+#include "program.h"
 
 int CheckBoard(const S_BOARD *pos) {
 

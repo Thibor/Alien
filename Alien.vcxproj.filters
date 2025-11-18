@@ -62,10 +62,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="eval.h">
+    <ClInclude Include="program.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,5 +1,4 @@
-// data.c
-#include "defs.h"
+#include "program.h"
 
 char PceChar[] = ".PNBRQKpnbrqk";
 char SideChar[] = "wb-";

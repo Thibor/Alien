@@ -1,6 +1,4 @@
-#ifndef DEFS_H
-#define DEFS_H
-
+#pragma once
 #include "stdlib.h"
 #include "stdio.h"
 
@@ -137,10 +135,11 @@ typedef struct {
 
 	int starttime;
 	int stoptime;
-	int depth;
+	int depthLimit;
 	int timeset;
 	int movestogo;
 
+	long nodesLimit;
 	long nodes;
 
 	int quit;
@@ -319,5 +318,3 @@ extern void MirrorEvalTest(S_BOARD *pos) ;
 
 // uci.c
 extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
-
-#endif

@@ -136,8 +136,7 @@
     <ClCompile Include="uci.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h" />
-    <ClInclude Include="eval.h" />
+    <ClInclude Include="program.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

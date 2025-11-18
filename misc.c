@@ -1,7 +1,7 @@
 // misc.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 #include "windows.h"
 
 int GetTimeMs() {

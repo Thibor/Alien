@@ -1,7 +1,7 @@
 // uci.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 #include "string.h"
 
 #define INPUTBUFFER 400 * 6
@@ -9,10 +9,13 @@
 // go depth 6 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
 void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 
-	int depth = -1, movestogo = 30, movetime = -1;
+	int movestogo = 30, movetime = -1;
 	int time = -1, inc = 0;
 	char* ptr = NULL;
+	info->starttime = GetTimeMs();
 	info->timeset = FALSE;
+	info->depthLimit=MAXDEPTH;
+	info->nodesLimit = 0;
 
 	if ((ptr = strstr(line, "infinite"))) {
 	}
@@ -42,16 +45,17 @@ void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 	}
 
 	if ((ptr = strstr(line, "depth"))) {
-		depth = atoi(ptr + 6);
+		info->depthLimit = atoi(ptr + 6);
+	}
+
+	if ((ptr = strstr(line, "nodes"))) {
+		info->nodesLimit = atoi(ptr + 6);
 	}
 
 	if (movetime != -1) {
 		time = movetime;
 		movestogo = 1;
 	}
-
-	info->starttime = GetTimeMs();
-	info->depth = depth;
 
 	if (time != -1) {
 		info->timeset = TRUE;
@@ -60,12 +64,6 @@ void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 		info->stoptime = info->starttime + time + inc;
 	}
 
-	if (depth == -1) {
-		info->depth = MAXDEPTH;
-	}
-
-	printf("time:%d start:%d stop:%d depth:%d timeset:%d\n",
-		time, info->starttime, info->stoptime, info->depth, info->timeset);
 	SearchPosition(pos, info);
 }
 
@@ -138,7 +136,6 @@ void Uci_Loop(S_BOARD* pos, S_SEARCHINFO* info) {
 			ParsePosition("position startpos\n", pos);
 		}
 		else if (!strncmp(line, "go", 2)) {
-			printf("Seen Go..\n");
 			ParseGo(line, info, pos);
 		}
 		else if (!strncmp(line, "quit", 4)) {

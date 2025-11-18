@@ -1,7 +1,7 @@
 // movegen.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 
 #define MOVE(f,t,ca,pro,fl) ( (f) | ((t) << 7) | ( (ca) << 14 ) | ( (pro) << 20 ) | (fl))
 #define SQOFFBOARD(sq) (FilesBrd[(sq)]==OFFBOARD)

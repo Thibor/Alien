@@ -1,7 +1,7 @@
 // io.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 
 char *PrSq(const int sq) {
 

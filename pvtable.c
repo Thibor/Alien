@@ -1,7 +1,7 @@
 // pvtable.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 
 int GetPvLine(const int depth, S_BOARD* pos) {
 

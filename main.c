@@ -1,7 +1,7 @@
 // seeChess.c
 
 #include "stdio.h"
-#include "defs.h"
+#include "program.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -11,8 +11,8 @@
 
 int main() {
 	AllInit();
-	S_BOARD pos[1]={};
-	S_SEARCHINFO info[1]={};
+	S_BOARD pos[1]={0};
+	S_SEARCHINFO info[1]={0};
     info->quit = FALSE;
 	pos->HashTable->pTable = NULL;
     InitHashTable(pos->HashTable, 256);
