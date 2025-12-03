@@ -1,12 +1,7 @@
-// uci.c
-
-#include "stdio.h"
 #include "program.h"
-#include "string.h"
 
-#define INPUTBUFFER 400 * 6
+#define INPUTBUFFER 4000
 
-// go depth 6 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
 void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 
 	int movestogo = 30, movetime = -1;
