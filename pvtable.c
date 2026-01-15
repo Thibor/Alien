@@ -3,7 +3,7 @@
 #include "stdio.h"
 #include "program.h"
 
-int GetPvLine(const int depth, S_BOARD* pos) {
+int GetPvLine(const int depth, Position* pos) {
 
 	ASSERT(depth < MAXDEPTH && depth >= 1);
 
@@ -79,7 +79,7 @@ void InitHashTable(S_HASHTABLE* table, const int MB) {
 
 }
 
-int ProbeHashEntry(S_BOARD* pos, int* move, int* score, int alpha, int beta, int depth) {
+int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, int depth) {
 
 	int index = pos->posKey % pos->HashTable->numEntries;
 
@@ -127,7 +127,7 @@ int ProbeHashEntry(S_BOARD* pos, int* move, int* score, int alpha, int beta, int
 	return FALSE;
 }
 
-void StoreHashEntry(S_BOARD* pos, const int move, int score, const int flags, const int depth) {
+void StoreHashEntry(Position* pos, const int move, int score, const int flags, const int depth) {
 
 	int index = pos->posKey % pos->HashTable->numEntries;
 
@@ -154,7 +154,7 @@ void StoreHashEntry(S_BOARD* pos, const int move, int score, const int flags, co
 	pos->HashTable->pTable[index].depth = depth;
 }
 
-int ProbePvMove(const S_BOARD* pos) {
+int ProbePvMove(const Position* pos) {
 
 	int index = pos->posKey % pos->HashTable->numEntries;
 	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);

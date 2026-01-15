@@ -5,8 +5,8 @@
 
 int main() {
 	AllInit();
-	S_BOARD pos[1]={0};
-	S_SEARCHINFO info[1]={0};
+	Position pos[1]={0};
+	SearchInfo info[1]={0};
     info->quit = FALSE;
 	pos->HashTable->pTable = NULL;
     InitHashTable(pos->HashTable, 256);

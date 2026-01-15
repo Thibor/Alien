@@ -1,6 +1,6 @@
 #include "program.h"
 
-int CheckBoard(const S_BOARD *pos) {
+int CheckBoard(const Position *pos) {
 
 	int t_pceNum[13] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	int t_bigPce[2] = { 0, 0};
@@ -84,7 +84,7 @@ int CheckBoard(const S_BOARD *pos) {
 	return TRUE;
 }
 
-void UpdateListsMaterial(S_BOARD *pos) {
+void UpdateListsMaterial(Position *pos) {
 
 	int piece,sq,index,colour;
 
@@ -122,7 +122,7 @@ void UpdateListsMaterial(S_BOARD *pos) {
 	}
 }
 
-int ParseFen(char *fen, S_BOARD *pos) {
+int ParseFen(char *fen, Position *pos) {
 
 	ASSERT(fen!=NULL);
 	ASSERT(pos!=NULL);
@@ -227,7 +227,7 @@ int ParseFen(char *fen, S_BOARD *pos) {
 	return 0;
 }
 
-void ResetBoard(S_BOARD *pos) {
+void ResetBoard(Position *pos) {
 
 	int index = 0;
 
@@ -268,7 +268,7 @@ void ResetBoard(S_BOARD *pos) {
 	pos->posKey = 0ULL;
 
 }
-void PrintBoard(const S_BOARD *pos) {
+void PrintBoard(const Position *pos) {
 
 	int sq,file,rank,piece;
 
@@ -300,7 +300,7 @@ void PrintBoard(const S_BOARD *pos) {
 	printf("PosKey:%llX\n",pos->posKey);
 }
 
-void MirrorBoard(S_BOARD *pos) {
+void MirrorBoard(Position *pos) {
 
     int tempPiecesArray[64];
     int tempSide = pos->side^1;

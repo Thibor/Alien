@@ -32,7 +32,7 @@ void InitSearch() {
 			LMRTable[moveDepth][played] = 1 + (log(moveDepth) * log(played) / 1.75);
 }
 
-static void CheckUp(S_SEARCHINFO* info) {
+static void CheckUp(SearchInfo* info) {
 	// .. check if time up, or interrupt from GUI
 	if ((info->timeset == TRUE && GetTimeMs() > info->stoptime)||
 		(info->nodesLimit && info->nodes > info->nodesLimit))
@@ -63,7 +63,7 @@ static void PickNextMove(int moveNum, S_MOVELIST* list) {
 	list->moves[bestNum] = temp;
 }
 
-static int IsRepetition(const S_BOARD* pos) {
+static int IsRepetition(const Position* pos) {
 
 	int index = 0;
 
@@ -76,7 +76,7 @@ static int IsRepetition(const S_BOARD* pos) {
 	return FALSE;
 }
 
-static void ClearForSearch(S_BOARD* pos, S_SEARCHINFO* info) {
+static void ClearForSearch(Position* pos, SearchInfo* info) {
 
 	int index = 0;
 	int index2 = 0;
@@ -104,7 +104,7 @@ static void ClearForSearch(S_BOARD* pos, S_SEARCHINFO* info) {
 	info->fhf = 0;
 }
 
-static int Quiescence(int alpha, int beta, S_BOARD* pos, S_SEARCHINFO* info) {
+static int Quiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 
 	ASSERT(CheckBoard(pos));
 	ASSERT(beta > alpha);
@@ -179,7 +179,7 @@ static int Quiescence(int alpha, int beta, S_BOARD* pos, S_SEARCHINFO* info) {
 	return alpha;
 }
 
-static int AlphaBeta(int alpha, int beta, int depth, S_BOARD* pos, S_SEARCHINFO* info, int DoNull, int DoLMR) {
+static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* info, int DoNull, int DoLMR) {
 
 	ASSERT(CheckBoard(pos));
 	ASSERT(beta > alpha);
@@ -392,7 +392,7 @@ static int AlphaBeta(int alpha, int beta, int depth, S_BOARD* pos, S_SEARCHINFO*
 	return alpha;
 }
 
-void SearchPosition(S_BOARD* pos, S_SEARCHINFO* info) {
+void SearchPosition(Position* pos, SearchInfo* info) {
 
 	int bestMove = NOMOVE;
 	int bestScore = -INFINITE;
@@ -417,11 +417,11 @@ void SearchPosition(S_BOARD* pos, S_SEARCHINFO* info) {
 		if (abs(bestScore) > ISMATE) {
 			bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
 			printf("info score mate %d depth %d nodes %ld time %d ",
-				bestScore, currentDepth, info->nodes, GetTimeMs() - info->starttime);
+				bestScore, currentDepth, info->nodes, GetTimeMs() - info->timeStart);
 		}
 		else {
 			printf("info score cp %d depth %d nodes %ld time %d ",
-				bestScore, currentDepth, info->nodes, GetTimeMs() - info->starttime);
+				bestScore, currentDepth, info->nodes, GetTimeMs() - info->timeStart);
 		}
 		pvMoves = GetPvLine(currentDepth, pos);
 		printf("hashfull %d pv", Permill(pos->HashTable));

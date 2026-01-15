@@ -50,7 +50,7 @@ static int InputWaiting() {
 #endif
 }
 
-void ReadInput(S_SEARCHINFO* info) {
+void ReadInput(SearchInfo* info) {
 	int bytes;
 	char input[256] = "", *endc;
 	if (InputWaiting()) {

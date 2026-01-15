@@ -2,15 +2,76 @@
 
 #define INPUTBUFFER 4000
 
-void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
+void ResetInfo(SearchInfo* info) {
+	info->timeStart = GetTimeMs();
+	info->timeset = FALSE;
+	info->depthLimit = MAXDEPTH;
+	info->nodesLimit = 0;
+}
 
+void PrintPerformanceHeader() {
+	printf("-----------------------------\n");
+	printf("ply      time        nodes\n");
+	printf("-----------------------------\n");
+}
+
+static int ShrinkNumber(U64 n) {
+	if (n < 1000)
+		return 0;
+	if (n < 1000000)
+		return 1;
+	if (n < 1000000000)
+		return 2;
+	return 3;
+}
+
+static void PrintSummary(U64 time, U64 nodes) {
+	U64 nps = (nodes * 1000) / max(time, 1);
+	const char* units[] = { "", "k", "m", "g" };
+	int sn = ShrinkNumber(nps);
+	int p = pow(10, sn * 3);
+	int b = pow(10, 3);
+	printf("-----------------------------\n");
+	printf("Time        : %llu\n", time);
+	printf("Nodes       : %llu\n", nodes);
+	printf("Nps         : %llu (%llu%s/s)\n", nps, nps / p, units[sn]);
+	printf("-----------------------------\n");
+}
+
+static inline void PerftDriver(Position* pos, SearchInfo* info, int depth) {
+	S_MOVELIST list[1];
+	GenerateAllMoves(pos, list);
+	for (int n = 0; n < list->count; n++){
+		if (!MakeMove(pos, list->moves[n].move))
+			continue;
+		if (depth)
+			PerftDriver(pos,info, depth - 1);
+		else
+			info->nodes++;
+		TakeMove(pos);
+	}
+}
+
+//performance test
+static inline void UciPerformance(Position* pos, SearchInfo* info) {
+	ResetInfo(info);
+	PrintPerformanceHeader();
+	ParseFen(START_FEN, pos);
+	info->depthLimit = 0;
+	U64 elapsed = 0;
+	while (elapsed < 3000) {
+		PerftDriver(pos,info, info->depthLimit++);
+		elapsed = GetTimeMs() - info->timeStart;
+		printf(" %2llu. %8llu %12llu\n", info->depthLimit, elapsed, info->nodes);
+	}
+	PrintSummary(elapsed, info->nodes);
+}
+
+void ParseGo(char* line, SearchInfo* info, Position* pos) {
+	ResetInfo(info);
 	int movestogo = 30, movetime = -1;
 	int time = -1, inc = 0;
 	char* ptr = NULL;
-	info->starttime = GetTimeMs();
-	info->timeset = FALSE;
-	info->depthLimit=MAXDEPTH;
-	info->nodesLimit = 0;
 
 	if ((ptr = strstr(line, "infinite"))) {
 	}
@@ -56,13 +117,13 @@ void ParseGo(char* line, S_SEARCHINFO* info, S_BOARD* pos) {
 		info->timeset = TRUE;
 		time /= movestogo;
 		time -= 50;
-		info->stoptime = info->starttime + time + inc;
+		info->stoptime = info->timeStart + time + inc;
 	}
 
 	SearchPosition(pos, info);
 }
 
-static void ParsePosition(char* lineIn, S_BOARD* pos) {
+static void ParsePosition(char* lineIn, Position* pos) {
 
 	lineIn += 9;
 	char* ptrChar = lineIn;
@@ -101,7 +162,7 @@ static void PrintWelcome() {
 	printf("%s %s\n", NAME, VERSION);
 }
 
-void Uci_Loop(S_BOARD* pos, S_SEARCHINFO* info) {
+void Uci_Loop(Position* pos, SearchInfo* info) {
 
 	setbuf(stdin, NULL);
 	setbuf(stdout, NULL);
@@ -136,6 +197,9 @@ void Uci_Loop(S_BOARD* pos, S_SEARCHINFO* info) {
 		else if (!strncmp(line, "quit", 4)) {
 			info->quit = TRUE;
 			break;
+		}
+		else if (!strncmp(line, "perft", 5)) {
+			UciPerformance(pos, info);
 		}
 		else if (!strncmp(line, "uci", 3)) {
 			printf("id name %s\n", NAME);

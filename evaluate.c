@@ -169,7 +169,7 @@ const int KingEG[64] =
 	42,  46,  48,  50,  50,  48,  46,  42,
 };
 
-static int MaterialDraw(const S_BOARD *pos) {
+static int MaterialDraw(const Position *pos) {
 
 	ASSERT(CheckBoard(pos));
 
@@ -193,7 +193,7 @@ static int MaterialDraw(const S_BOARD *pos) {
   return FALSE;
 }
 
-int EvalPosition(S_BOARD *pos) {
+int EvalPosition(Position *pos) {
 
 	ASSERT(CheckBoard(pos));
 

@@ -44,7 +44,7 @@ char *PrMove(const int move) {
 	return MvStr;
 }
 
-int ParseMove(char *ptrChar, S_BOARD *pos) {
+int ParseMove(char *ptrChar, Position *pos) {
 
 	ASSERT(CheckBoard(pos));
 

@@ -130,11 +130,11 @@ typedef struct {
 	int searchHistory[13][BRD_SQ_NUM];
 	int searchKillers[2][MAXDEPTH];
 
-} S_BOARD;
+} Position;
 
 typedef struct {
 
-	int starttime;
+	int timeStart;
 	int stoptime;
 	int depthLimit;
 	int timeset;
@@ -152,7 +152,7 @@ typedef struct {
 
 	int POST_THINKING;
 
-} S_SEARCHINFO;
+} SearchInfo;
 
 /* GAME MOVE */
 
@@ -252,24 +252,24 @@ extern int PopBit(U64 *bb);
 extern int CountBits(U64 b);
 
 // hashkeys.c
-extern U64 GeneratePosKey(const S_BOARD *pos);
+extern U64 GeneratePosKey(const Position *pos);
 
 // board.c
-extern void ResetBoard(S_BOARD *pos);
-extern int ParseFen(char *fen, S_BOARD *pos);
-extern void PrintBoard(const S_BOARD *pos);
-extern void UpdateListsMaterial(S_BOARD *pos);
-extern int CheckBoard(const S_BOARD *pos);
-extern void MirrorBoard(S_BOARD *pos);
+extern void ResetBoard(Position *pos);
+extern int ParseFen(char *fen, Position *pos);
+extern void PrintBoard(const Position *pos);
+extern void UpdateListsMaterial(Position *pos);
+extern int CheckBoard(const Position *pos);
+extern void MirrorBoard(Position *pos);
 
 // attack.c
-extern int SqAttacked(const int sq, const int side, const S_BOARD *pos);
+extern int SqAttacked(const int sq, const int side, const Position *pos);
 
 // io.c
 extern char *PrMove(const int move);
 extern char *PrSq(const int sq);
 extern void PrintMoveList(const S_MOVELIST *list);
-extern int ParseMove(char *ptrChar, S_BOARD *pos);
+extern int ParseMove(char *ptrChar, Position *pos);
 
 
 //validate.c
@@ -278,44 +278,44 @@ extern int SideValid(const int side);
 extern int FileRankValid(const int fr);
 extern int PieceValidEmpty(const int pce);
 extern int PieceValid(const int pce);
-extern void MirrorEvalTest(S_BOARD *pos);
+extern void MirrorEvalTest(Position *pos);
 extern int SqIs120(const int sq);
 extern int PceValidEmptyOffbrd(const int pce);
-extern int MoveListOk(const S_MOVELIST *list,  const S_BOARD *pos);
-extern void DebugAnalysisTest(S_BOARD *pos, S_SEARCHINFO *info);
+extern int MoveListOk(const S_MOVELIST *list,  const Position *pos);
+extern void DebugAnalysisTest(Position *pos, SearchInfo *info);
 
 // movegen.c
-extern void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list);
-extern void GenerateAllCaps(const S_BOARD *pos, S_MOVELIST *list);
-extern int MoveExists(S_BOARD *pos, const int move);
+extern void GenerateAllMoves(const Position *pos, S_MOVELIST *list);
+extern void GenerateAllCaps(const Position *pos, S_MOVELIST *list);
+extern int MoveExists(Position *pos, const int move);
 extern void InitMvvLva();
 
 // makemove.c
-extern int MakeMove(S_BOARD *pos, int move);
-extern void TakeMove(S_BOARD *pos);
-extern void MakeNullMove(S_BOARD *pos);
-extern void TakeNullMove(S_BOARD *pos);
+extern int MakeMove(Position *pos, int move);
+extern void TakeMove(Position *pos);
+extern void MakeNullMove(Position *pos);
+extern void TakeNullMove(Position *pos);
 
 // search.c
-extern void SearchPosition(S_BOARD *pos, S_SEARCHINFO *info);
+extern void SearchPosition(Position *pos, SearchInfo *info);
 extern void InitSearch();
 
 // misc.c
 extern int GetTimeMs();
-extern void ReadInput(S_SEARCHINFO *info);
+extern void ReadInput(SearchInfo *info);
 
 // pvtable.c
 extern void InitHashTable(S_HASHTABLE *table, const int MB);
-extern void StoreHashEntry(S_BOARD *pos, const int move, int score, const int flags, const int depth);
-extern int ProbeHashEntry(S_BOARD *pos, int *move, int *score, int alpha, int beta, int depth);
-extern int ProbePvMove(const S_BOARD *pos);
-extern int GetPvLine(const int depth, S_BOARD *pos);
+extern void StoreHashEntry(Position *pos, const int move, int score, const int flags, const int depth);
+extern int ProbeHashEntry(Position *pos, int *move, int *score, int alpha, int beta, int depth);
+extern int ProbePvMove(const Position *pos);
+extern int GetPvLine(const int depth, Position *pos);
 extern void ClearHashTable(S_HASHTABLE *table);
 extern int Permill(S_HASHTABLE* table);
 
 // evaluate.c
-extern int EvalPosition(S_BOARD *pos);
-extern void MirrorEvalTest(S_BOARD *pos) ;
+extern int EvalPosition(Position *pos);
+extern void MirrorEvalTest(Position *pos) ;
 
 // uci.c
-extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
+extern void Uci_Loop(Position *pos, SearchInfo *info);

@@ -2,7 +2,7 @@
 #include "stdio.h"
 #include "program.h"
 
-U64 GeneratePosKey(const S_BOARD *pos) {
+U64 GeneratePosKey(const Position *pos) {
 
 	int sq = 0;
 	U64 finalKey = 0;

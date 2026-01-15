@@ -23,7 +23,7 @@ const int CastlePerm[120] = {
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15
 };
 
-static void ClearPiece(const int sq, S_BOARD *pos) {
+static void ClearPiece(const int sq, Position *pos) {
 
 	ASSERT(SqOnBoard(sq));
 	ASSERT(CheckBoard(pos));
@@ -72,7 +72,7 @@ static void ClearPiece(const int sq, S_BOARD *pos) {
 }
 
 
-static void AddPiece(const int sq, S_BOARD *pos, const int pce) {
+static void AddPiece(const int sq, Position *pos, const int pce) {
 
     ASSERT(PieceValid(pce));
     ASSERT(SqOnBoard(sq));
@@ -101,7 +101,7 @@ static void AddPiece(const int sq, S_BOARD *pos, const int pce) {
 
 }
 
-static void MovePiece(const int from, const int to, S_BOARD *pos) {
+static void MovePiece(const int from, const int to, Position *pos) {
 
     ASSERT(SqOnBoard(from));
     ASSERT(SqOnBoard(to));
@@ -141,7 +141,7 @@ static void MovePiece(const int from, const int to, S_BOARD *pos) {
 	ASSERT(t_PieceNum);
 }
 
-int MakeMove(S_BOARD *pos, int move) {
+int MakeMove(Position *pos, int move) {
 
 	ASSERT(CheckBoard(pos));
 
@@ -253,7 +253,7 @@ int MakeMove(S_BOARD *pos, int move) {
 
 }
 
-void TakeMove(S_BOARD *pos) {
+void TakeMove(Position *pos) {
 
 	ASSERT(CheckBoard(pos));
 
@@ -322,7 +322,7 @@ void TakeMove(S_BOARD *pos) {
 }
 
 
-void MakeNullMove(S_BOARD *pos) {
+void MakeNullMove(Position *pos) {
 
     ASSERT(CheckBoard(pos));
     ASSERT(!SqAttacked(pos->KingSq[pos->side],pos->side^1,pos));
@@ -349,7 +349,7 @@ void MakeNullMove(S_BOARD *pos) {
     return;
 } // MakeNullMove
 
-void TakeNullMove(S_BOARD *pos) {
+void TakeNullMove(Position *pos) {
     ASSERT(CheckBoard(pos));
 
     pos->hisPly--;

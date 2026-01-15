@@ -57,7 +57,7 @@ void InitMvvLva() {
 	}
 }
 
-int MoveExists(S_BOARD *pos, const int move) {
+int MoveExists(Position *pos, const int move) {
 
 	S_MOVELIST list[1];
     GenerateAllMoves(pos,list);
@@ -76,7 +76,7 @@ int MoveExists(S_BOARD *pos, const int move) {
 	return FALSE;
 }
 
-static void AddQuietMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
+static void AddQuietMove( const Position *pos, int move, S_MOVELIST *list ) {
 
 	ASSERT(SqOnBoard(FROMSQ(move)));
 	ASSERT(SqOnBoard(TOSQ(move)));
@@ -95,7 +95,7 @@ static void AddQuietMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
 	list->count++;
 }
 
-static void AddCaptureMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
+static void AddCaptureMove( const Position *pos, int move, S_MOVELIST *list ) {
 
 	ASSERT(SqOnBoard(FROMSQ(move)));
 	ASSERT(SqOnBoard(TOSQ(move)));
@@ -107,7 +107,7 @@ static void AddCaptureMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
 	list->count++;
 }
 
-static void AddEnPassantMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
+static void AddEnPassantMove( const Position *pos, int move, S_MOVELIST *list ) {
 
 	ASSERT(SqOnBoard(FROMSQ(move)));
 	ASSERT(SqOnBoard(TOSQ(move)));
@@ -119,7 +119,7 @@ static void AddEnPassantMove( const S_BOARD *pos, int move, S_MOVELIST *list ) {
 	list->count++;
 }
 
-static void AddWhitePawnCapMove( const S_BOARD *pos, const int from, const int to, const int cap, S_MOVELIST *list ) {
+static void AddWhitePawnCapMove( const Position *pos, const int from, const int to, const int cap, S_MOVELIST *list ) {
 
 	ASSERT(PieceValidEmpty(cap));
 	ASSERT(SqOnBoard(from));
@@ -136,7 +136,7 @@ static void AddWhitePawnCapMove( const S_BOARD *pos, const int from, const int t
 	}
 }
 
-static void AddWhitePawnMove( const S_BOARD *pos, const int from, const int to, S_MOVELIST *list ) {
+static void AddWhitePawnMove( const Position *pos, const int from, const int to, S_MOVELIST *list ) {
 
 	ASSERT(SqOnBoard(from));
 	ASSERT(SqOnBoard(to));
@@ -152,7 +152,7 @@ static void AddWhitePawnMove( const S_BOARD *pos, const int from, const int to, 
 	}
 }
 
-static void AddBlackPawnCapMove( const S_BOARD *pos, const int from, const int to, const int cap, S_MOVELIST *list ) {
+static void AddBlackPawnCapMove( const Position *pos, const int from, const int to, const int cap, S_MOVELIST *list ) {
 
 	ASSERT(PieceValidEmpty(cap));
 	ASSERT(SqOnBoard(from));
@@ -169,7 +169,7 @@ static void AddBlackPawnCapMove( const S_BOARD *pos, const int from, const int t
 	}
 }
 
-static void AddBlackPawnMove( const S_BOARD *pos, const int from, const int to, S_MOVELIST *list ) {
+static void AddBlackPawnMove( const Position *pos, const int from, const int to, S_MOVELIST *list ) {
 
 	ASSERT(SqOnBoard(from));
 	ASSERT(SqOnBoard(to));
@@ -185,7 +185,7 @@ static void AddBlackPawnMove( const S_BOARD *pos, const int from, const int to, 
 	}
 }
 
-void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list) {
+void GenerateAllMoves(const Position *pos, S_MOVELIST *list) {
 
 	ASSERT(CheckBoard(pos));
 
@@ -361,7 +361,7 @@ void GenerateAllMoves(const S_BOARD *pos, S_MOVELIST *list) {
 }
 
 
-void GenerateAllCaps(const S_BOARD *pos, S_MOVELIST *list) {
+void GenerateAllCaps(const Position *pos, S_MOVELIST *list) {
 
 	ASSERT(CheckBoard(pos));
 
