@@ -120,7 +120,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="attack.c" />
-    <ClCompile Include="bitboards.c" />
     <ClCompile Include="board.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="data.c" />
@@ -128,7 +127,6 @@
     <ClCompile Include="init.c" />
     <ClCompile Include="io.c" />
     <ClCompile Include="makemove.c" />
-    <ClCompile Include="misc.c" />
     <ClCompile Include="movegen.c" />
     <ClCompile Include="pvtable.c" />
     <ClCompile Include="search.c" />
