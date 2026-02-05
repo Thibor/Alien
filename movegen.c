@@ -81,7 +81,7 @@ static void AddQuietMove( const Position *pos, int move, S_MOVELIST *list ) {
 	ASSERT(SqOnBoard(FROMSQ(move)));
 	ASSERT(SqOnBoard(TOSQ(move)));
 	ASSERT(CheckBoard(pos));
-	ASSERT(pos->ply >=0 && pos->ply < MAXDEPTH);
+	ASSERT(pos->ply >=0 && pos->ply < MAX_PLY);
 
 	list->moves[list->count].move = move;
 

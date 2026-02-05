@@ -87,7 +87,7 @@ static void ClearForSearch(Position* pos, SearchInfo* info) {
 	}
 
 	for (index = 0; index < 2; ++index) {
-		for (index2 = 0; index2 < MAXDEPTH; ++index2) {
+		for (index2 = 0; index2 < MAX_PLY; ++index2) {
 			pos->searchKillers[index][index2] = 0;
 		}
 	}
@@ -113,7 +113,7 @@ static int Quiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 		return 0;
 	}
 
-	if (pos->ply > MAXDEPTH - 1) {
+	if (pos->ply > MAX_PLY - 1) {
 		return EvalPosition(pos);
 	}
 
@@ -197,7 +197,7 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 		return 0;
 	}
 
-	if (pos->ply > MAXDEPTH - 1) {
+	if (pos->ply > MAX_PLY - 1) {
 		return EvalPosition(pos);
 	}
 

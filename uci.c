@@ -7,7 +7,7 @@ void ResetInfo(SearchInfo* info) {
 	info->post = TRUE;
 	info->nodes = 0;
 	info->timeStart = GetTimeMs();
-	info->depthLimit = MAXDEPTH;
+	info->depthLimit = MAX_PLY;
 	info->timeLimit = 0;
 	info->nodesLimit = 0;
 }
