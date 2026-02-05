@@ -1,7 +1,7 @@
 # Alien
 
 <div align="center" style="padding-top: 50px">
-<img src="/Resources/alien.png" />
+<img src="/Resources/Alien.jpg" />
     <br>
     <br>
     <b><i>Small uci chess engine 2250 elo.</i></b>

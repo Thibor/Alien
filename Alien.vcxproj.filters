@@ -33,9 +33,6 @@
     <ClCompile Include="evaluate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="hashkeys.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="init.c">
       <Filter>Source Files</Filter>
     </ClCompile>

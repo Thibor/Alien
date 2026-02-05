@@ -50,22 +50,15 @@ static int InputWaiting() {
 #endif
 }
 
-void ReadInput(SearchInfo* info) {
+void ReadInput(Position* pos, SearchInfo* info) {
 	int bytes;
-	char input[256] = "", *endc;
+	char input[256] = "";
 	if (InputWaiting()) {
-		info->stopped = TRUE;
+		info->stop = TRUE;
 		do {
 			bytes = read(fileno(stdin), input, 256);
 		} while (bytes < 0);
-		endc = strchr(input, '\n');
-		if (endc) *endc = 0;
-
-		if (strlen(input) > 0) {
-			if (!strncmp(input, "quit", 4)) {
-				info->quit = TRUE;
-			}
-		}
-		return;
+		if (strlen(input) > 0)
+		UciCommand(pos,info,input);
 	}
 }

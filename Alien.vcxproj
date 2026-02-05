@@ -125,7 +125,6 @@
     <ClCompile Include="main.c" />
     <ClCompile Include="data.c" />
     <ClCompile Include="evaluate.c" />
-    <ClCompile Include="hashkeys.c" />
     <ClCompile Include="init.c" />
     <ClCompile Include="io.c" />
     <ClCompile Include="makemove.c" />

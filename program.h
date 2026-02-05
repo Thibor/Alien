@@ -133,25 +133,13 @@ typedef struct {
 } Position;
 
 typedef struct {
-
-	int timeStart;
-	int stoptime;
-	int depthLimit;
-	int timeset;
-	int movestogo;
-
-	long nodesLimit;
+	int stop;
+	int post;
 	long nodes;
-
-	int quit;
-	int stopped;
-
-	float fh;
-	float fhf;
-	int nullCut;
-
-	int POST_THINKING;
-
+	int timeStart;
+	int depthLimit;
+	long nodesLimit;
+	long timeLimit;
 } SearchInfo;
 
 /* GAME MOVE */
@@ -297,12 +285,12 @@ extern void MakeNullMove(Position *pos);
 extern void TakeNullMove(Position *pos);
 
 // search.c
-extern void SearchPosition(Position *pos, SearchInfo *info);
+extern void SearchIteratively(Position *pos, SearchInfo *info);
 extern void InitSearch();
 
 // misc.c
 extern int GetTimeMs();
-extern void ReadInput(SearchInfo *info);
+extern void ReadInput(Position* pos, SearchInfo *info);
 
 // pvtable.c
 extern void InitHashTable(S_HASHTABLE *table, const int MB);
@@ -318,4 +306,5 @@ extern int EvalPosition(Position *pos);
 extern void MirrorEvalTest(Position *pos) ;
 
 // uci.c
-extern void Uci_Loop(Position *pos, SearchInfo *info);
+extern void UciCommand(Position* pos, SearchInfo* info, char* line);
+extern void UciLoop(Position *pos, SearchInfo *info);

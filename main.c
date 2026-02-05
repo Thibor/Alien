@@ -1,18 +1,47 @@
 #include "program.h"
 
-//#define WAC1 "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1"
-//#define PERFT "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+U64 GeneratePosKey(const Position* pos) {
+
+	int sq = 0;
+	U64 finalKey = 0;
+	int piece = EMPTY;
+
+	// pieces
+	for (sq = 0; sq < BRD_SQ_NUM; ++sq) {
+		piece = pos->pieces[sq];
+		if (piece != NO_SQ && piece != EMPTY && piece != OFFBOARD) {
+			ASSERT(piece >= wP && piece <= bK);
+			finalKey ^= PieceKeys[piece][sq];
+		}
+	}
+
+	if (pos->side == WHITE) {
+		finalKey ^= SideKey;
+	}
+
+	if (pos->enPas != NO_SQ) {
+		ASSERT(pos->enPas >= 0 && pos->enPas < BRD_SQ_NUM);
+		ASSERT(SqOnBoard(pos->enPas));
+		ASSERT(RanksBrd[pos->enPas] == RANK_3 || RanksBrd[pos->enPas] == RANK_6);
+		finalKey ^= PieceKeys[EMPTY][pos->enPas];
+	}
+
+	ASSERT(pos->castlePerm >= 0 && pos->castlePerm <= 15);
+
+	finalKey ^= CastleKeys[pos->castlePerm];
+
+	return finalKey;
+}
 
 int main() {
 	AllInit();
 	Position pos[1]={0};
 	SearchInfo info[1]={0};
-    info->quit = FALSE;
 	pos->HashTable->pTable = NULL;
     InitHashTable(pos->HashTable, 256);
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
-	Uci_Loop(pos, info);
+	UciLoop(pos, info);
 	free(pos->HashTable->pTable);
 	return 0;
 }
