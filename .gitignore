@@ -4,7 +4,7 @@
 
 /.gitignore
 /.vs
-/Gnome
+/Alien
 /x64/Debug
 /obj
 *.config
