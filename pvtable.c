@@ -59,7 +59,7 @@ int Permill(S_HASHTABLE* table) {
 
 void InitHashTable(S_HASHTABLE* table, const int MB) {
 
-	int HashSize = 0x100000 * MB;
+	int HashSize = 1000000 * MB;
 	table->numEntries = HashSize / sizeof(S_HASHENTRY);
 	table->numEntries -= 2;
 

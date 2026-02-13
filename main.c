@@ -147,7 +147,7 @@ int main() {
 	Position pos[1]={0};
 	SearchInfo info[1]={0};
 	pos->HashTable->pTable = NULL;
-    InitHashTable(pos->HashTable, 256);
+    InitHashTable(pos->HashTable, HASH_DEF);
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 	UciLoop(pos, info);

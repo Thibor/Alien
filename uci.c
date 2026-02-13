@@ -65,7 +65,7 @@ static inline void UciPerformance(Position* pos, SearchInfo* info) {
 	while (elapsed < 3000) {
 		PerftDriver(pos, info, info->depthLimit++);
 		elapsed = GetTimeMs() - info->timeStart;
-		printf(" %2llu. %8llu %12llu\n", info->depthLimit, elapsed, info->nodes);
+		printf(" %2d. %8llu %12llu\n", info->depthLimit, elapsed, info->nodes);
 	}
 	PrintSummary(elapsed, info->nodes);
 }
@@ -158,7 +158,7 @@ static void PrintWelcome() {
 	printf("%s %s\n", NAME, VERSION);
 }
 
-void UciQuit() {
+static void UciQuit() {
 	exit(0);
 }
 
@@ -181,14 +181,14 @@ void UciCommand(Position* pos, SearchInfo* info, char* line) {
 		PrintBoard(pos);
 	else if (!strncmp(line, "uci", 3)) {
 		printf("id name %s\n", NAME);
-		printf("option name Hash type spin default 256 min 4 max %d\n", MAX_HASH);
+		printf("option name Hash type spin default %d min %d max %d\n",HASH_DEF,HASH_MIN,HASH_MAX);
 		printf("uciok\n");
 	}
 	else if (!strncmp(line, "setoption name Hash value ", 26)) {
-		int MB = 256;
+		int MB = HASH_DEF;
 		sscanf(line, "%*s %*s %*s %*s %d", &MB);
-		if (MB < 4) MB = 4;
-		if (MB > MAX_HASH) MB = MAX_HASH;
+		if (MB < HASH_MIN) MB = HASH_MIN;
+		if (MB > HASH_MAX) MB = HASH_MAX;
 		printf("Set Hash to %d MB\n", MB);
 		InitHashTable(pos->HashTable, MB);
 	}
@@ -198,7 +198,6 @@ void UciLoop(Position* pos, SearchInfo* info) {
 	setbuf(stdin, NULL);
 	setbuf(stdout, NULL);
 	char line[INPUTBUFFER];
-	int MB = 256;
 	PrintWelcome();
 	ParseFen(START_FEN, pos);
 	while (TRUE) {

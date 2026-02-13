@@ -5,7 +5,9 @@
 
 // #define DEBUG
 
-#define MAX_HASH 1024
+#define HASH_MAX 1000
+#define HASH_MIN 1
+#define HASH_DEF 64
 
 #ifndef DEBUG
 #define ASSERT(n)
@@ -135,11 +137,11 @@ typedef struct {
 typedef struct {
 	int stop;
 	int post;
-	long nodes;
-	int timeStart;
 	int depthLimit;
-	long nodesLimit;
-	long timeLimit;
+	U64 nodes;
+	U64 timeStart;
+	U64 nodesLimit;
+	U64 timeLimit;
 } SearchInfo;
 
 /* GAME MOVE */
