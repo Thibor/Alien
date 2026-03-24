@@ -16,7 +16,7 @@ char *PrSq(const int sq) {
 
 }
 
-char *PrMove(const int move) {
+char *MoveToUci(const int move) {
 
 	static char MvStr[6];
 
@@ -98,7 +98,7 @@ void PrintMoveList(const S_MOVELIST *list) {
 		move = list->moves[index].move;
 		score = list->moves[index].score;
 
-		printf("Move:%d > %s (score:%d)\n",index+1,PrMove(move),score);
+		printf("Move:%d > %s (score:%d)\n",index+1,MoveToUci(move),score);
 	}
 	printf("MoveList Total %d Moves:\n\n",list->count);
 }

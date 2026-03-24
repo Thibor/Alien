@@ -3,11 +3,9 @@
 #include "stdio.h"
 #include "string.h"
 
-// #define DEBUG
-
-#define HASH_MAX 1000
-#define HASH_MIN 1
+#define HASH_MAX 1024
 #define HASH_DEF 64
+#define HASH_MIN 1
 
 #ifndef DEBUG
 #define ASSERT(n)
@@ -21,6 +19,7 @@ printf("In File %s ",__FILE__); \
 printf("At Line %d\n",__LINE__); \
 exit(1);}
 #endif
+
 
 typedef unsigned long long U64;
 
@@ -246,7 +245,7 @@ extern U64 GeneratePosKey(const Position *pos);
 
 // board.c
 extern void ResetBoard(Position *pos);
-extern int ParseFen(char *fen, Position *pos);
+extern int SetFen(char *fen, Position *pos);
 extern void PrintBoard(const Position *pos);
 extern void UpdateListsMaterial(Position *pos);
 extern int CheckBoard(const Position *pos);
@@ -256,23 +255,10 @@ extern void MirrorBoard(Position *pos);
 extern int SqAttacked(const int sq, const int side, const Position *pos);
 
 // io.c
-extern char *PrMove(const int move);
+extern char *MoveToUci(const int move);
 extern char *PrSq(const int sq);
 extern void PrintMoveList(const S_MOVELIST *list);
 extern int ParseMove(char *ptrChar, Position *pos);
-
-
-//validate.c
-extern int SqOnBoard(const int sq);
-extern int SideValid(const int side);
-extern int FileRankValid(const int fr);
-extern int PieceValidEmpty(const int pce);
-extern int PieceValid(const int pce);
-extern void MirrorEvalTest(Position *pos);
-extern int SqIs120(const int sq);
-extern int PceValidEmptyOffbrd(const int pce);
-extern int MoveListOk(const S_MOVELIST *list,  const Position *pos);
-extern void DebugAnalysisTest(Position *pos, SearchInfo *info);
 
 // movegen.c
 extern void GenerateAllMoves(const Position *pos, S_MOVELIST *list);
@@ -291,7 +277,7 @@ extern void SearchIteratively(Position *pos, SearchInfo *info);
 extern void InitSearch();
 
 // misc.c
-extern int GetTimeMs();
+extern U64 GetTimeMs();
 extern void ReadInput(Position* pos, SearchInfo *info);
 
 // pvtable.c
@@ -305,7 +291,6 @@ extern int Permill(S_HASHTABLE* table);
 
 // evaluate.c
 extern int EvalPosition(Position *pos);
-extern void MirrorEvalTest(Position *pos) ;
 
 // uci.c
 extern void UciCommand(Position* pos, SearchInfo* info, char* line);

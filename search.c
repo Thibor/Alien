@@ -29,7 +29,7 @@ void InitSearch() {
 	// creating the LMR table entries (idea from Ethereal)
 	for (int moveDepth = 1; moveDepth < 64; moveDepth++)
 		for (int played = 1; played < 64; played++)
-			LMRTable[moveDepth][played] = 1 + (log(moveDepth) * log(played) / 1.75);
+			LMRTable[moveDepth][played] = 1 + (int)(log(moveDepth) * log(played) / 1.75);
 }
 
 static void CheckUp(Position* pos, SearchInfo* info) {
@@ -101,7 +101,21 @@ static void ClearForSearch(Position* pos, SearchInfo* info) {
 	info->nodes = 0;
 }
 
-static int Quiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
+static void PrintInfo(Position* pos,SearchInfo* info, int bestScore,int depth) {
+	if (abs(bestScore) > ISMATE) {
+		bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
+		printf("info score mate %d depth %d nodes %llu time %llu ",bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
+	}
+	else
+		printf("info score cp %d depth %d nodes %llu time %llu ",bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
+	int pvMoves = GetPvLine(depth, pos);
+	printf("hashfull %d pv", Permill(pos->HashTable));
+	for (int pvNum = 0; pvNum < pvMoves; ++pvNum)
+		printf(" %s", MoveToUci(pos->PvArray[pvNum]));
+	printf("\n");
+}
+
+static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 
 	ASSERT(CheckBoard(pos));
 	ASSERT(beta > alpha);
@@ -152,7 +166,7 @@ static int Quiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 		}
 
 		Legal++;
-		Score = -Quiescence(-beta, -alpha, pos, info);
+		Score = -SearchQuiescence(-beta, -alpha, pos, info);
 		TakeMove(pos);
 
 		if (info->stop == TRUE) {
@@ -171,7 +185,7 @@ static int Quiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 	return alpha;
 }
 
-static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* info, int DoNull, int DoLMR) {
+static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo* info, int DoNull, int DoLMR) {
 
 	ASSERT(CheckBoard(pos));
 	ASSERT(beta > alpha);
@@ -185,7 +199,7 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 	}
 
 	if (depth <= 0) {
-		return Quiescence(alpha, beta, pos, info);
+		return SearchQuiescence(alpha, beta, pos, info);
 		// return EvalPosition(pos);
 	}
 
@@ -221,7 +235,7 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 	// Razoring (prunes near alpha)
 	if (depth <= RazorDepth && !PvMove && !InCheck && positionEval + RazorMargin[depth] <= alpha) {
 		// drop into qSearch if move most likely won't beat alpha
-		Score = Quiescence(alpha - RazorMargin[depth], beta - RazorMargin[depth], pos, info);
+		Score = SearchQuiescence(alpha - RazorMargin[depth], beta - RazorMargin[depth], pos, info);
 		if (Score + RazorMargin[depth] <= alpha) {
 			return Score;
 		}
@@ -235,7 +249,7 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 	// Null Move Pruning
 	if (depth >= minDepth && DoNull && !InCheck && pos->ply && (pos->bigPce[pos->side] > 0) && positionEval >= beta) {
 		MakeNullMove(pos);
-		Score = -AlphaBeta(-beta, -beta + 1, depth - 1 - R, pos, info, FALSE, FALSE);
+		Score = -SearchAlpha(-beta, -beta + 1, depth - 1 - R, pos, info, FALSE, FALSE);
 		TakeNullMove(pos);
 		if (info->stop == TRUE) {
 			return 0;
@@ -306,31 +320,30 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 				// printf("reduction: %d depth: %d moveNum: %d\n", (reduce - 1), depth, Legal);
 
 				// search with the reduced depth
-				Score = -AlphaBeta(-alpha - 1, -alpha, depth - reduce, pos, info, TRUE, FALSE);
+				Score = -SearchAlpha(-alpha - 1, -alpha, depth - reduce, pos, info, TRUE, FALSE);
 
 			}
 			else {
 				// If LMR conditions not met (not at root, or tactical move), do a null window search (because we are using PVS)
-				Score = -AlphaBeta(-alpha - 1, -alpha, depth - 1, pos, info, TRUE, TRUE);
+				Score = -SearchAlpha(-alpha - 1, -alpha, depth - 1, pos, info, TRUE, TRUE);
 
 			}
 			if (Score > alpha && Score < beta) {
 				// If the LMR or the null window fails, do a full search
-				Score = -AlphaBeta(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
+				Score = -SearchAlpha(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
 
 			}
 		}
 		else {
 			// If no PV found, do a full search
-			Score = -AlphaBeta(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
+			Score = -SearchAlpha(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
 
 		}
 
 		TakeMove(pos);
 
-		if (info->stop == TRUE) {
+		if (info->stop)
 			return 0;
-		}
 		if (Score > BestScore) {
 			BestScore = Score;
 			BestMove = list->moves[MoveNum].move;
@@ -378,45 +391,14 @@ static int AlphaBeta(int alpha, int beta, int depth, Position* pos, SearchInfo* 
 }
 
 void SearchIteratively(Position* pos, SearchInfo* info) {
-
-	int bestMove = NOMOVE;
-	int bestScore = -INFINITE;
-	int pvMoves = 0;
-	int pvNum = 0;
-
 	ClearForSearch(pos, info);
-
-	//printf("Search depth:%d\n",info->depth);
-
-	// iterative deepening
-	for (int currentDepth = 1; currentDepth <= info->depthLimit; ++currentDepth) {
-		// alpha	 beta
-		bestScore = AlphaBeta(-INFINITE, INFINITE, currentDepth, pos, info, TRUE, TRUE);
-
-		if (info->stop == TRUE) {
+	for (int depth = 1; depth <= info->depthLimit; ++depth) {
+		int score = SearchAlpha(-INFINITE, INFINITE, depth, pos, info, TRUE, TRUE);
+		if (info->stop) 
 			break;
-		}
-		if (info->post) {
-			pvMoves = GetPvLine(currentDepth, pos);
-			bestMove = pos->PvArray[0];
-			if (abs(bestScore) > ISMATE) {
-				bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
-				printf("info score mate %d depth %d nodes %ld time %d ",
-					bestScore, currentDepth, info->nodes, GetTimeMs() - info->timeStart);
-			}
-			else {
-				printf("info score cp %d depth %d nodes %ld time %d ",
-					bestScore, currentDepth, info->nodes, GetTimeMs() - info->timeStart);
-			}
-			pvMoves = GetPvLine(currentDepth, pos);
-			printf("hashfull %d pv", Permill(pos->HashTable));
-			for (pvNum = 0; pvNum < pvMoves; ++pvNum) {
-				printf(" %s", PrMove(pos->PvArray[pvNum]));
-			}
-			printf("\n");
-		}
+		if (info->post) 
+			PrintInfo(pos, info, score, depth);
 	}
 	if (info->post)
-		printf("bestmove %s\n", PrMove(bestMove));
-
+		printf("bestmove %s\n", MoveToUci(pos->PvArray[0]));
 }

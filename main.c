@@ -83,7 +83,7 @@ U64 GeneratePosKey(const Position* pos) {
 	return finalKey;
 }
 
-int GetTimeMs() {
+U64 GetTimeMs() {
 #ifdef WIN32
 	return GetTickCount64();
 #else
@@ -147,7 +147,7 @@ int main() {
 	Position pos[1]={0};
 	SearchInfo info[1]={0};
 	pos->HashTable->pTable = NULL;
-    InitHashTable(pos->HashTable, HASH_DEF);
+    InitHashTable(pos->HashTable,HASH_DEF);
 	setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 	UciLoop(pos, info);

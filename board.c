@@ -122,7 +122,7 @@ void UpdateListsMaterial(Position *pos) {
 	}
 }
 
-int ParseFen(char *fen, Position *pos) {
+int SetFen(char *fen, Position *pos) {
 
 	ASSERT(fen!=NULL);
 	ASSERT(pos!=NULL);

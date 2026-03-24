@@ -19,11 +19,11 @@ void PrintPerformanceHeader() {
 }
 
 static int ShrinkNumber(U64 n) {
-	if (n < 1000)
+	if (n < 10000)
 		return 0;
-	if (n < 1000000)
+	if (n < 10000000)
 		return 1;
-	if (n < 1000000000)
+	if (n < 10000000000)
 		return 2;
 	return 3;
 }
@@ -32,8 +32,8 @@ static void PrintSummary(U64 time, U64 nodes) {
 	U64 nps = (nodes * 1000) / max(time, 1);
 	const char* units[] = { "", "k", "m", "g" };
 	int sn = ShrinkNumber(nps);
-	int p = pow(10, sn * 3);
-	int b = pow(10, 3);
+	int p = (int)pow(10, sn * 3);
+	int b = (int)pow(10, 3);
 	printf("-----------------------------\n");
 	printf("Time        : %llu\n", time);
 	printf("Nodes       : %llu\n", nodes);
@@ -59,7 +59,6 @@ static inline void PerftDriver(Position* pos, SearchInfo* info, int depth) {
 static inline void UciPerformance(Position* pos, SearchInfo* info) {
 	ResetInfo(info);
 	PrintPerformanceHeader();
-	ParseFen(START_FEN, pos);
 	info->depthLimit = 0;
 	U64 elapsed = 0;
 	while (elapsed < 3000) {
@@ -74,7 +73,6 @@ static inline void UciPerformance(Position* pos, SearchInfo* info) {
 static void UciBench(Position* pos, SearchInfo* info) {
 	ResetInfo(info);
 	PrintPerformanceHeader();
-	ParseFen(START_FEN, pos);
 	info->depthLimit = 0;
 	info->post = FALSE;
 	U64 elapsed = 0;
@@ -125,16 +123,16 @@ static void ParsePosition(char* lineIn, Position* pos) {
 	char* ptrChar = lineIn;
 
 	if (strncmp(lineIn, "startpos", 8) == 0) {
-		ParseFen(START_FEN, pos);
+		SetFen(START_FEN, pos);
 	}
 	else {
 		ptrChar = strstr(lineIn, "fen");
 		if (ptrChar == NULL) {
-			ParseFen(START_FEN, pos);
+			SetFen(START_FEN, pos);
 		}
 		else {
 			ptrChar += 4;
-			ParseFen(ptrChar, pos);
+			SetFen(ptrChar, pos);
 		}
 	}
 
@@ -181,11 +179,11 @@ void UciCommand(Position* pos, SearchInfo* info, char* line) {
 		PrintBoard(pos);
 	else if (!strncmp(line, "uci", 3)) {
 		printf("id name %s\n", NAME);
-		printf("option name Hash type spin default %d min %d max %d\n",HASH_DEF,HASH_MIN,HASH_MAX);
+		printf("option name Hash type spin default %d min %d max %d\n", HASH_DEF, HASH_MIN, HASH_MAX);
 		printf("uciok\n");
 	}
 	else if (!strncmp(line, "setoption name Hash value ", 26)) {
-		int MB = HASH_DEF;
+		int MB = 256;
 		sscanf(line, "%*s %*s %*s %*s %d", &MB);
 		if (MB < HASH_MIN) MB = HASH_MIN;
 		if (MB > HASH_MAX) MB = HASH_MAX;
@@ -199,7 +197,7 @@ void UciLoop(Position* pos, SearchInfo* info) {
 	setbuf(stdout, NULL);
 	char line[INPUTBUFFER];
 	PrintWelcome();
-	ParseFen(START_FEN, pos);
+	SetFen(START_FEN, pos);
 	while (TRUE) {
 		memset(&line[0], 0, sizeof(line));
 		fflush(stdout);
