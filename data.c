@@ -1,6 +1,6 @@
 #include "program.h"
 
-char PceChar[] = ".PNBRQKpnbrqk";
+char PceChar[] = " ANBRQKanbrqk";
 char SideChar[] = "wb-";
 char RankChar[] = "12345678";
 char FileChar[] = "abcdefgh";

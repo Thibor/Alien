@@ -97,23 +97,16 @@ typedef struct {
 } S_UNDO;
 
 typedef struct {
-
 	int pieces[BRD_SQ_NUM];
 	U64 pawns[3];
-
 	int KingSq[2];
-
 	int side;
 	int enPas;
 	int fiftyMove;
-
 	int ply;
 	int hisPly;
-
 	int castlePerm;
-
 	U64 posKey;
-
 	int pceNum[13];
 	int bigPce[2];
 	int majPce[2];
@@ -125,7 +118,7 @@ typedef struct {
 	// piece list
 	int pList[13][10];
 
-	S_HASHTABLE HashTable[1];
+	S_HASHTABLE HashTable;
 	int PvArray[MAX_PLY];
 
 	int searchHistory[13][BRD_SQ_NUM];
@@ -239,11 +232,12 @@ extern void AllInit();
 extern void PrintBitBoard(U64 bb);
 extern int PopBit(U64 *bb);
 extern int CountBits(U64 b);
-
-// hashkeys.c
 extern U64 GeneratePosKey(const Position *pos);
-
-// board.c
+void InitSq120To64();
+void InitBitMasks();
+void InitHashKeys();
+void InitFilesRanksBrd();
+void InitEvalMasks();
 extern void ResetBoard(Position *pos);
 extern int SetFen(char *fen, Position *pos);
 extern void PrintBoard(const Position *pos);

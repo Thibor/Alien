@@ -130,7 +130,6 @@
     <ClCompile Include="movegen.c" />
     <ClCompile Include="pvtable.c" />
     <ClCompile Include="search.c" />
-    <ClCompile Include="uci.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="program.h" />

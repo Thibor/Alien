@@ -269,25 +269,22 @@ void ResetBoard(Position *pos) {
 
 }
 void PrintBoard(const Position *pos) {
-
 	int sq,file,rank,piece;
-
-	printf("\nGame Board:\n\n");
-
+	const char* s = "   +---+---+---+---+---+---+---+---+\n";
+	const char* t = "     A   B   C   D   E   F   G   H\n";
+	printf(t);
 	for(rank = RANK_8; rank >= RANK_1; rank--) {
-		printf("%d  ",rank+1);
+		printf(s);
+		printf(" %d |",rank+1);
 		for(file = FILE_A; file <= FILE_H; file++) {
 			sq = FR2SQ(file,rank);
 			piece = pos->pieces[sq];
-			printf("%3c",PceChar[piece]);
+			printf(" %c |",PceChar[piece]);
 		}
-		printf("\n");
+		printf(" %d \n", rank + 1);
 	}
-
-	printf("\n   ");
-	for(file = FILE_A; file <= FILE_H; file++) {
-		printf("%3c",'a'+file);
-	}
+	printf(s);
+	printf(t);
 	printf("\n");
 	printf("side:%c\n",SideChar[pos->side]);
 	printf("enPas:%d\n",pos->enPas);

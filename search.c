@@ -92,9 +92,9 @@ static void ClearForSearch(Position* pos, SearchInfo* info) {
 		}
 	}
 
-	pos->HashTable->overWrite = 0;
-	pos->HashTable->hit = 0;
-	pos->HashTable->cut = 0;
+	pos->HashTable.overWrite = 0;
+	pos->HashTable.hit = 0;
+	pos->HashTable.cut = 0;
 	pos->ply = 0;
 
 	info->stop = 0;
@@ -109,7 +109,7 @@ static void PrintInfo(Position* pos,SearchInfo* info, int bestScore,int depth) {
 	else
 		printf("info score cp %d depth %d nodes %llu time %llu ",bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
 	int pvMoves = GetPvLine(depth, pos);
-	printf("hashfull %d pv", Permill(pos->HashTable));
+	printf("hashfull %d pv", Permill(&pos->HashTable));
 	for (int pvNum = 0; pvNum < pvMoves; ++pvNum)
 		printf(" %s", MoveToUci(pos->PvArray[pvNum]));
 	printf("\n");
@@ -226,7 +226,7 @@ static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo
 	int PvMove = NOMOVE;
 
 	if (ProbeHashEntry(pos, &PvMove, &Score, alpha, beta, depth) == TRUE) {
-		pos->HashTable->cut++;
+		pos->HashTable.cut++;
 		return Score;
 	}
 

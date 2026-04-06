@@ -48,9 +48,6 @@
     <ClCompile Include="search.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="uci.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="program.h">
