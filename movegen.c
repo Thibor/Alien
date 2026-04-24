@@ -37,13 +37,6 @@ const int NumDir[13] = {
  0, 0, 8, 4, 4, 8, 8, 0, 8, 4, 4, 8, 8
 };
 
-/*
-PV Move
-Cap -> MvvLVA
-Killers
-HistoryScore
-
-*/
 const int VictimScore[13] = { 0, 100, 200, 300, 400, 500, 600, 100, 200, 300, 400, 500, 600 };
 static int MvvLvaScores[13][13];
 
@@ -52,7 +45,7 @@ void InitMvvLva() {
 	int Victim;
 	for(Attacker = wP; Attacker <= bK; ++Attacker) {
 		for(Victim = wP; Victim <= bK; ++Victim) {
-			MvvLvaScores[Victim][Attacker] = VictimScore[Victim] + 6 - ( VictimScore[Attacker] / 100);
+			MvvLvaScores[Victim][Attacker] = VictimScore[Victim] + 6 - ( VictimScore[Attacker] / 10);
 		}
 	}
 }

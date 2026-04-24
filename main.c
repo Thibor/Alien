@@ -7,12 +7,291 @@
 Position pos;
 SearchInfo info;
 
+char PceChar[] = " ANBRQKanbrqk";
+char SideChar[] = "wb-";
+char RankChar[] = "12345678";
+char FileChar[] = "abcdefgh";
+
+int PieceBig[13] = { FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE };
+int PieceMaj[13] = { FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE };
+int PieceMin[13] = { FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE };
+int PieceVal[13] = { 0, 100, 325, 325, 550, 1000, 50000, 100, 325, 325, 550, 1000, 50000 };
+int PieceCol[13] = { BOTH, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+	BLACK, BLACK, BLACK, BLACK, BLACK, BLACK };
+
+int PiecePawn[13] = { FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE };
+int PieceKnight[13] = { FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE };
+int PieceKing[13] = { FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE };
+int PieceRookQueen[13] = { FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE };
+int PieceBishopQueen[13] = { FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE };
+int PieceSlides[13] = { FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE };
+
+int Mirror64[64] = {
+56	,	57	,	58	,	59	,	60	,	61	,	62	,	63	,
+48	,	49	,	50	,	51	,	52	,	53	,	54	,	55	,
+40	,	41	,	42	,	43	,	44	,	45	,	46	,	47	,
+32	,	33	,	34	,	35	,	36	,	37	,	38	,	39	,
+24	,	25	,	26	,	27	,	28	,	29	,	30	,	31	,
+16	,	17	,	18	,	19	,	20	,	21	,	22	,	23	,
+8	,	9	,	10	,	11	,	12	,	13	,	14	,	15	,
+0	,	1	,	2	,	3	,	4	,	5	,	6	,	7
+};
+
 const int BitTable[64] = {
   63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
   51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
   26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
   58, 20, 37, 17, 36, 8
 };
+
+#define RAND_64 ((U64)rand() | (U64)rand() << 15 | (U64)rand() << 30 | (U64)rand() << 45 |((U64)rand() & 0xf) << 60 )
+
+int Sq120ToSq64[BRD_SQ_NUM];
+int Sq64ToSq120[64];
+
+U64 SetMask[64];
+U64 ClearMask[64];
+
+U64 PieceKeys[13][120];
+U64 SideKey;
+U64 CastleKeys[16];
+
+int FilesBrd[BRD_SQ_NUM];
+int RanksBrd[BRD_SQ_NUM];
+
+U64 FileBBMask[8];
+U64 RankBBMask[8];
+
+U64 BlackPassedMask[64];
+U64 WhitePassedMask[64];
+U64 IsolatedMask[64];
+
+const int KnDir[8] = { -8, -19,	-21, -12, 8, 19, 21, 12 };
+const int RkDir[4] = { -1, -10,	1, 10 };
+const int BiDir[4] = { -9, -11, 11, 9 };
+const int KiDir[8] = { -1, -10,	1, 10, -9, -11, 11, 9 };
+
+int SqAttacked(const int sq, const int side, const Position* pos) {
+
+	int pce, index, t_sq, dir;
+
+	ASSERT(SqOnBoard(sq));
+	ASSERT(SideValid(side));
+	ASSERT(CheckBoard(pos));
+
+	// pawns
+	if (side == WHITE) {
+		if (pos->pieces[sq - 11] == wP || pos->pieces[sq - 9] == wP) {
+			return TRUE;
+		}
+	}
+	else {
+		if (pos->pieces[sq + 11] == bP || pos->pieces[sq + 9] == bP) {
+			return TRUE;
+		}
+	}
+
+	// knights
+	for (index = 0; index < 8; ++index) {
+		pce = pos->pieces[sq + KnDir[index]];
+		ASSERT(PceValidEmptyOffbrd(pce));
+		if (pce != OFFBOARD && IsKn(pce) && PieceCol[pce] == side) {
+			return TRUE;
+		}
+	}
+
+	// rooks, queens
+	for (index = 0; index < 4; ++index) {
+		dir = RkDir[index];
+		t_sq = sq + dir;
+		ASSERT(SqIs120(t_sq));
+		pce = pos->pieces[t_sq];
+		ASSERT(PceValidEmptyOffbrd(pce));
+		while (pce != OFFBOARD) {
+			if (pce != EMPTY) {
+				if (IsRQ(pce) && PieceCol[pce] == side) {
+					return TRUE;
+				}
+				break;
+			}
+			t_sq += dir;
+			ASSERT(SqIs120(t_sq));
+			pce = pos->pieces[t_sq];
+		}
+	}
+
+	// bishops, queens
+	for (index = 0; index < 4; ++index) {
+		dir = BiDir[index];
+		t_sq = sq + dir;
+		ASSERT(SqIs120(t_sq));
+		pce = pos->pieces[t_sq];
+		ASSERT(PceValidEmptyOffbrd(pce));
+		while (pce != OFFBOARD) {
+			if (pce != EMPTY) {
+				if (IsBQ(pce) && PieceCol[pce] == side) {
+					return TRUE;
+				}
+				break;
+			}
+			t_sq += dir;
+			ASSERT(SqIs120(t_sq));
+			pce = pos->pieces[t_sq];
+		}
+	}
+
+	// kings
+	for (index = 0; index < 8; ++index) {
+		pce = pos->pieces[sq + KiDir[index]];
+		ASSERT(PceValidEmptyOffbrd(pce));
+		if (pce != OFFBOARD && IsKi(pce) && PieceCol[pce] == side) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+
+}
+
+void InitEvalMasks() {
+	int sq, tsq, r, f;
+
+	for (sq = 0; sq < 8; ++sq) {
+		FileBBMask[sq] = 0ULL;
+		RankBBMask[sq] = 0ULL;
+	}
+
+	for (r = RANK_8; r >= RANK_1; r--) {
+		for (f = FILE_A; f <= FILE_H; f++) {
+			sq = r * 8 + f;
+			FileBBMask[f] |= (1ULL << sq);
+			RankBBMask[r] |= (1ULL << sq);
+		}
+	}
+
+	for (sq = 0; sq < 64; ++sq) {
+		IsolatedMask[sq] = 0ULL;
+		WhitePassedMask[sq] = 0ULL;
+		BlackPassedMask[sq] = 0ULL;
+	}
+
+	for (sq = 0; sq < 64; ++sq) {
+		tsq = sq + 8;
+
+		while (tsq < 64) {
+			WhitePassedMask[sq] |= (1ULL << tsq);
+			tsq += 8;
+		}
+
+		tsq = sq - 8;
+		while (tsq >= 0) {
+			BlackPassedMask[sq] |= (1ULL << tsq);
+			tsq -= 8;
+		}
+
+		if (FilesBrd[SQ120(sq)] > FILE_A) {
+			IsolatedMask[sq] |= FileBBMask[FilesBrd[SQ120(sq)] - 1];
+
+			tsq = sq + 7;
+			while (tsq < 64) {
+				WhitePassedMask[sq] |= (1ULL << tsq);
+				tsq += 8;
+			}
+
+			tsq = sq - 9;
+			while (tsq >= 0) {
+				BlackPassedMask[sq] |= (1ULL << tsq);
+				tsq -= 8;
+			}
+		}
+
+		if (FilesBrd[SQ120(sq)] < FILE_H) {
+			IsolatedMask[sq] |= FileBBMask[FilesBrd[SQ120(sq)] + 1];
+
+			tsq = sq + 9;
+			while (tsq < 64) {
+				WhitePassedMask[sq] |= (1ULL << tsq);
+				tsq += 8;
+			}
+
+			tsq = sq - 7;
+			while (tsq >= 0) {
+				BlackPassedMask[sq] |= (1ULL << tsq);
+				tsq -= 8;
+			}
+		}
+	}
+}
+
+void InitFilesRanksBrd() {
+
+	int index = 0;
+	int file = FILE_A;
+	int rank = RANK_1;
+	int sq = A1;
+
+	for (index = 0; index < BRD_SQ_NUM; ++index) {
+		FilesBrd[index] = OFFBOARD;
+		RanksBrd[index] = OFFBOARD;
+	}
+
+	for (rank = RANK_1; rank <= RANK_8; ++rank) {
+		for (file = FILE_A; file <= FILE_H; ++file) {
+			sq = FR2SQ(file, rank);
+			FilesBrd[sq] = file;
+			RanksBrd[sq] = rank;
+		}
+	}
+}
+
+void InitHashKeys() {
+
+	int index = 0;
+	int index2 = 0;
+	for (index = 0; index < 13; ++index) {
+		for (index2 = 0; index2 < 120; ++index2) {
+			PieceKeys[index][index2] = RAND_64;
+		}
+	}
+	SideKey = RAND_64;
+	for (index = 0; index < 16; ++index) {
+		CastleKeys[index] = RAND_64;
+	}
+
+}
+
+void InitBitMasks() {
+	int index = 0;
+
+	for (index = 0; index < 64; index++) {
+		SetMask[index] = 0ULL;
+		ClearMask[index] = 0ULL;
+	}
+
+	for (index = 0; index < 64; index++) {
+		SetMask[index] |= (1ULL << index);
+		ClearMask[index] = ~SetMask[index];
+	}
+}
+
+void InitSq120To64() {
+
+	int index = 0;
+	int file = FILE_A;
+	int rank = RANK_1;
+	int sq = A1;
+	int sq64 = 0;
+	for (index = 0; index < BRD_SQ_NUM; ++index)
+		Sq120ToSq64[index] = 65;
+	for (rank = RANK_1; rank <= RANK_8; ++rank) {
+		for (file = FILE_A; file <= FILE_H; ++file) {
+			sq = FR2SQ(file, rank);
+			Sq64ToSq120[sq64] = sq;
+			Sq120ToSq64[sq] = sq64;
+			sq64++;
+		}
+	}
+}
 
 int PopBit(U64* bb) {
 	U64 b = *bb ^ (*bb - 1);
@@ -97,6 +376,274 @@ U64 GetTimeMs() {
 #endif
 }
 
+char* PrSq(const int sq) {
+
+	static char SqStr[3];
+
+	int file = FilesBrd[sq];
+	int rank = RanksBrd[sq];
+
+	sprintf(SqStr, "%c%c", ('a' + file), ('1' + rank));
+
+	return SqStr;
+
+}
+
+char* MoveToUci(const int move) {
+
+	static char MvStr[6];
+
+	int ff = FilesBrd[FROMSQ(move)];
+	int rf = RanksBrd[FROMSQ(move)];
+	int ft = FilesBrd[TOSQ(move)];
+	int rt = RanksBrd[TOSQ(move)];
+
+	int promoted = PROMOTED(move);
+
+	if (promoted) {
+		char pchar = 'q';
+		if (IsKn(promoted)) {
+			pchar = 'n';
+		}
+		else if (IsRQ(promoted) && !IsBQ(promoted)) {
+			pchar = 'r';
+		}
+		else if (!IsRQ(promoted) && IsBQ(promoted)) {
+			pchar = 'b';
+		}
+		sprintf(MvStr, "%c%c%c%c%c", ('a' + ff), ('1' + rf), ('a' + ft), ('1' + rt), pchar);
+	}
+	else {
+		sprintf(MvStr, "%c%c%c%c", ('a' + ff), ('1' + rf), ('a' + ft), ('1' + rt));
+	}
+
+	return MvStr;
+}
+
+int ParseMove(char* ptrChar, Position* pos) {
+
+	ASSERT(CheckBoard(pos));
+
+	if (ptrChar[1] > '8' || ptrChar[1] < '1') return NOMOVE;
+	if (ptrChar[3] > '8' || ptrChar[3] < '1') return NOMOVE;
+	if (ptrChar[0] > 'h' || ptrChar[0] < 'a') return NOMOVE;
+	if (ptrChar[2] > 'h' || ptrChar[2] < 'a') return NOMOVE;
+
+	int from = FR2SQ(ptrChar[0] - 'a', ptrChar[1] - '1');
+	int to = FR2SQ(ptrChar[2] - 'a', ptrChar[3] - '1');
+
+	ASSERT(SqOnBoard(from) && SqOnBoard(to));
+
+	S_MOVELIST list[1];
+	GenerateAllMoves(pos, list);
+	int MoveNum = 0;
+	int Move = 0;
+	int PromPce = EMPTY;
+
+	for (MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+		Move = list->moves[MoveNum].move;
+		if (FROMSQ(Move) == from && TOSQ(Move) == to) {
+			PromPce = PROMOTED(Move);
+			if (PromPce != EMPTY) {
+				if (IsRQ(PromPce) && !IsBQ(PromPce) && ptrChar[4] == 'r') {
+					return Move;
+				}
+				else if (!IsRQ(PromPce) && IsBQ(PromPce) && ptrChar[4] == 'b') {
+					return Move;
+				}
+				else if (IsRQ(PromPce) && IsBQ(PromPce) && ptrChar[4] == 'q') {
+					return Move;
+				}
+				else if (IsKn(PromPce) && ptrChar[4] == 'n') {
+					return Move;
+				}
+				continue;
+			}
+			return Move;
+		}
+	}
+
+	return NOMOVE;
+}
+
+void PrintMoveList(const S_MOVELIST* list) {
+	int index = 0;
+	int score = 0;
+	int move = 0;
+	printf("MoveList:\n");
+
+	for (index = 0; index < list->count; ++index) {
+
+		move = list->moves[index].move;
+		score = list->moves[index].score;
+
+		printf("Move:%d > %s (score:%d)\n", index + 1, MoveToUci(move), score);
+	}
+	printf("MoveList Total %d Moves:\n\n", list->count);
+}
+
+int GetPvLine(const int depth, Position* pos) {
+
+	ASSERT(depth < MAX_PLY && depth >= 1);
+
+	int move = ProbePvMove(pos);
+	int count = 0;
+
+	while (move != NOMOVE && count < depth) {
+
+		ASSERT(count < MAX_PLY);
+
+		if (MoveExists(pos, move)) {
+			MakeMove(pos, move);
+			pos->PvArray[count++] = move;
+		}
+		else {
+			break;
+		}
+		move = ProbePvMove(pos);
+	}
+
+	while (pos->ply > 0) {
+		TakeMove(pos);
+	}
+
+	return count;
+
+}
+
+void ClearHashTable(S_HASHTABLE* table) {
+
+	S_HASHENTRY* tableEntry;
+
+	for (tableEntry = table->pTable; tableEntry < table->pTable + table->numEntries; tableEntry++) {
+		tableEntry->posKey = 0ULL;
+		tableEntry->move = NOMOVE;
+		tableEntry->depth = 0;
+		tableEntry->score = 0;
+		tableEntry->flags = 0;
+	}
+	table->newWrite = 0;
+}
+
+int Permill(S_HASHTABLE* table) {
+	S_HASHENTRY* tableEntry = table->pTable;
+	int pm = 0;
+	for (int n = 0; n < 1000; n++) {
+		if (tableEntry->posKey)
+			pm++;
+		tableEntry++;
+	}
+	return pm;
+}
+
+void InitHashTable(S_HASHTABLE* table, const int MB) {
+
+	int HashSize = 1000000 * MB;
+	table->numEntries = HashSize / sizeof(S_HASHENTRY);
+	table->numEntries -= 2;
+
+	if (table->pTable != NULL) {
+		free(table->pTable);
+	}
+
+	table->pTable = (S_HASHENTRY*)malloc(table->numEntries * sizeof(S_HASHENTRY));
+	if (table->pTable == NULL) {
+		printf("Hash Allocation Failed, trying %d MB...\n", MB / 2);
+		InitHashTable(table, MB / 2);
+	}
+	else {
+		ClearHashTable(table);
+		printf("HashTable init complete with %d MB\n", MB);
+	}
+
+}
+
+int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, int depth) {
+
+	int index = pos->posKey % pos->HashTable.numEntries;
+
+	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+	ASSERT(depth >= 1 && depth < MAX_PLY);
+	ASSERT(alpha < beta);
+	ASSERT(alpha >= -INFINITE && alpha <= INFINITE);
+	ASSERT(beta >= -INFINITE && beta <= INFINITE);
+	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+
+	if (pos->HashTable.pTable[index].posKey == pos->posKey) {
+		*move = pos->HashTable.pTable[index].move;
+		if (pos->HashTable.pTable[index].depth >= depth) {
+			pos->HashTable.hit++;
+
+			ASSERT(pos->HashTable->pTable[index].depth >= 1 && pos->HashTable->pTable[index].depth < MAX_PLY);
+			ASSERT(pos->HashTable->pTable[index].flags >= HFALPHA && pos->HashTable->pTable[index].flags <= HFEXACT);
+
+			*score = pos->HashTable.pTable[index].score;
+			if (*score > ISMATE) *score -= pos->ply;
+			else if (*score < -ISMATE) *score += pos->ply;
+
+			switch (pos->HashTable.pTable[index].flags) {
+
+				ASSERT(*score >= -INFINITE && *score <= INFINITE);
+
+			case HFALPHA: if (*score <= alpha) {
+				*score = alpha;
+				return TRUE;
+			}
+						break;
+			case HFBETA: if (*score >= beta) {
+				*score = beta;
+				return TRUE;
+			}
+					   break;
+			case HFEXACT:
+				return TRUE;
+				break;
+			default: ASSERT(FALSE); break;
+			}
+		}
+	}
+
+	return FALSE;
+}
+
+void StoreHashEntry(Position* pos, const int move, int score, const int flags, const int depth) {
+
+	int index = pos->posKey % pos->HashTable.numEntries;
+
+	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+	ASSERT(depth >= 1 && depth < MAX_PLY);
+	ASSERT(flags >= HFALPHA && flags <= HFEXACT);
+	ASSERT(score >= -INFINITE && score <= INFINITE);
+	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+
+	if (pos->HashTable.pTable[index].posKey == 0) {
+		pos->HashTable.newWrite++;
+	}
+	else {
+		pos->HashTable.overWrite++;
+	}
+
+	if (score > ISMATE) score += pos->ply;
+	else if (score < -ISMATE) score -= pos->ply;
+
+	pos->HashTable.pTable[index].move = move;
+	pos->HashTable.pTable[index].posKey = pos->posKey;
+	pos->HashTable.pTable[index].flags = flags;
+	pos->HashTable.pTable[index].score = score;
+	pos->HashTable.pTable[index].depth = depth;
+}
+
+int ProbePvMove(const Position* pos) {
+
+	int index = pos->posKey % pos->HashTable.numEntries;
+	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+
+	if (pos->HashTable.pTable[index].posKey == pos->posKey) {
+		return pos->HashTable.pTable[index].move;
+	}
+
+	return NOMOVE;
+}
 
 static int InputWaiting() {
 #ifndef WIN32
@@ -331,8 +878,9 @@ void UciCommand(Position* pos, SearchInfo* info, char* line) {
 void UciLoop(Position* pos, SearchInfo* info) {
 	char line[4000];
 	while (fgets(line, sizeof(line), stdin))
-		UciCommand(pos,info, line);
+		UciCommand(pos, info, line);
 }
+
 int main() {
 	setbuf(stdin, NULL);
 	setbuf(stdout, NULL);
@@ -345,7 +893,7 @@ int main() {
 	InitMvvLva();
 	InitSearch();
 	pos.HashTable.pTable = NULL;
-    InitHashTable(&pos.HashTable,HASH_DEF);
+	InitHashTable(&pos.HashTable, HASH_DEF);
 	SetFen(START_FEN, &pos);
 	UciLoop(&pos, &info);
 	free(pos.HashTable.pTable);

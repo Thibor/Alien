@@ -16,4 +16,13 @@
 
 ## Features
 
-- board 10x12
+FIDE-rules-compliant chess engine
+
+## Features
+
+- Board: 10x12
+- En passant
+- Underpromotions (knight, bishop, rook)
+- Threefold repetition
+- 50-move rule
+- Stalemate and checkmate reported correctly to the GUI
