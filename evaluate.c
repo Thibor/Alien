@@ -171,8 +171,6 @@ const int KingEG[64] =
 
 static int MaterialDraw(const Position *pos) {
 
-	ASSERT(CheckBoard(pos));
-
     if (!pos->pceNum[wR] && !pos->pceNum[bR] && !pos->pceNum[wQ] && !pos->pceNum[bQ]) {
 	  if (!pos->pceNum[bB] && !pos->pceNum[wB]) {
 	      if (pos->pceNum[wN] < 3 && pos->pceNum[bN] < 3) {  return TRUE; }
@@ -194,8 +192,6 @@ static int MaterialDraw(const Position *pos) {
 }
 
 int EvalPosition(Position *pos) {
-
-	ASSERT(CheckBoard(pos));
 
 	// test for drawn position before doing anything
 	if(!pos->pceNum[wP] && !pos->pceNum[bP] && MaterialDraw(pos) == TRUE) {

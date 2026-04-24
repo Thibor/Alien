@@ -242,8 +242,6 @@ extern void ResetBoard(Position *pos);
 extern int SetFen(char *fen, Position *pos);
 extern void PrintBoard(const Position *pos);
 extern void UpdateListsMaterial(Position *pos);
-extern int CheckBoard(const Position *pos);
-extern void MirrorBoard(Position *pos);
 
 // attack.c
 extern int SqAttacked(const int sq, const int side, const Position *pos);

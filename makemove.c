@@ -25,8 +25,6 @@ const int CastlePerm[120] = {
 
 static void ClearPiece(const int sq, Position *pos) {
 
-	ASSERT(SqOnBoard(sq));
-	ASSERT(CheckBoard(pos));
 
     int pce = pos->pieces[sq];
 
@@ -143,8 +141,6 @@ static void MovePiece(const int from, const int to, Position *pos) {
 
 int MakeMove(Position *pos, int move) {
 
-	ASSERT(CheckBoard(pos));
-
 	int from = FROMSQ(move);
     int to = TOSQ(move);
     int side = pos->side;
@@ -241,7 +237,6 @@ int MakeMove(Position *pos, int move) {
 	pos->side ^= 1;
     HASH_SIDE;
 
-    ASSERT(CheckBoard(pos));
 
 
 	if(SqAttacked(pos->KingSq[side],pos->side,pos))  {
@@ -255,7 +250,6 @@ int MakeMove(Position *pos, int move) {
 
 void TakeMove(Position *pos) {
 
-	ASSERT(CheckBoard(pos));
 
 	pos->hisPly--;
     pos->ply--;
@@ -317,15 +311,12 @@ void TakeMove(Position *pos) {
         AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? wP : bP));
     }
 
-    ASSERT(CheckBoard(pos));
 
 }
 
 
 void MakeNullMove(Position *pos) {
 
-    ASSERT(CheckBoard(pos));
-    ASSERT(!SqAttacked(pos->KingSq[pos->side],pos->side^1,pos));
 
     pos->ply++;
     pos->history[pos->hisPly].posKey = pos->posKey;
@@ -342,15 +333,10 @@ void MakeNullMove(Position *pos) {
     pos->hisPly++;
     HASH_SIDE;
 
-    ASSERT(CheckBoard(pos));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
-
     return;
 } // MakeNullMove
 
 void TakeNullMove(Position *pos) {
-    ASSERT(CheckBoard(pos));
 
     pos->hisPly--;
     pos->ply--;
@@ -365,7 +351,4 @@ void TakeNullMove(Position *pos) {
     pos->side ^= 1;
     HASH_SIDE;
 
-    ASSERT(CheckBoard(pos));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
 }

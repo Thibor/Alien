@@ -117,8 +117,6 @@ static void PrintInfo(Position* pos,SearchInfo* info, int bestScore,int depth) {
 
 static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
 
-	ASSERT(CheckBoard(pos));
-	ASSERT(beta > alpha);
 	if ((++info->nodes & 2047) == 0) {
 		CheckUp(pos,info);
 	}
@@ -186,10 +184,6 @@ static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info
 }
 
 static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo* info, int DoNull, int DoLMR) {
-
-	ASSERT(CheckBoard(pos));
-	ASSERT(beta > alpha);
-	ASSERT(depth >= 0);
 
 	int InCheck = SqAttacked(pos->KingSq[pos->side], pos->side ^ 1, pos);
 

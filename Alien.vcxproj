@@ -119,7 +119,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="board.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="evaluate.c" />
     <ClCompile Include="makemove.c" />
