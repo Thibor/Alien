@@ -21,13 +21,7 @@
     <ClCompile Include="evaluate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="makemove.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="movegen.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="search.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

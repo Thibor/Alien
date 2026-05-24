@@ -1,7 +1,4 @@
 #pragma once
-#include "stdlib.h"
-#include "stdio.h"
-#include "string.h"
 
 #define HASH_MAX 1024
 #define HASH_DEF 64
@@ -26,6 +23,8 @@ typedef unsigned long long U64;
 #define NAME "Alien"
 #define VERSION "2025-09-25"
 
+#define FALSE 0
+#define TRUE 1
 #define BRD_SQ_NUM 120
 
 #define MAXGAMEMOVES 2048
@@ -34,7 +33,7 @@ typedef unsigned long long U64;
 
 #define START_FEN  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-#define INFINITE 30000
+#define INFINITE 32000
 #define ISMATE (INFINITE - MAX_PLY)
 
 enum { EMPTY, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK  };
@@ -52,8 +51,6 @@ enum {
   A7 = 81, B7, C7, D7, E7, F7, G7, H7,
   A8 = 91, B8, C8, D8, E8, F8, G8, H8, NO_SQ, OFFBOARD
 };
-
-enum { FALSE, TRUE };
 
 enum { WKCA = 1, WQCA = 2, BKCA = 4, BQCA = 8 };
 

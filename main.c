@@ -1,8 +1,15 @@
-#include "program.h"
+
+#include <math.h>
+#include <stdio.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #endif
+
+#include "program.h"
+
+#define RAND_64 ((U64)rand() | (U64)rand() << 15 | (U64)rand() << 30 | (U64)rand() << 45 |((U64)rand() & 0xf) << 60 )
+
 
 Position pos;
 SearchInfo info;
@@ -44,8 +51,6 @@ const int BitTable[64] = {
   58, 20, 37, 17, 36, 8
 };
 
-#define RAND_64 ((U64)rand() | (U64)rand() << 15 | (U64)rand() << 30 | (U64)rand() << 45 |((U64)rand() & 0xf) << 60 )
-
 int Sq120ToSq64[BRD_SQ_NUM];
 int Sq64ToSq120[64];
 
@@ -70,6 +75,758 @@ const int KnDir[8] = { -8, -19,	-21, -12, 8, 19, 21, 12 };
 const int RkDir[4] = { -1, -10,	1, 10 };
 const int BiDir[4] = { -9, -11, 11, 9 };
 const int KiDir[8] = { -1, -10,	1, 10, -9, -11, 11, 9 };
+
+#define HASH_PCE(pce,sq) (pos->posKey ^= (PieceKeys[(pce)][(sq)]))
+#define HASH_CA (pos->posKey ^= (CastleKeys[(pos->castlePerm)]))
+#define HASH_SIDE (pos->posKey ^= (SideKey))
+#define HASH_EP (pos->posKey ^= (PieceKeys[EMPTY][(pos->enPas)]))
+
+const int CastlePerm[120] = {
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 13, 15, 15, 15, 12, 15, 15, 14, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15,  7, 15, 15, 15,  3, 15, 15, 11, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15
+};
+
+// Null Move Pruning Values
+static const int R = 2;
+static const int minDepth = 3;
+
+// Razoring Values
+static const int RazorDepth = 2;
+static const int RazorMargin[3] = { 0, 200, 400 };
+
+// Futility Values
+static const int FutilityDepth = 6;
+static const int FutilityMargin[7] = { 0, 200, 325, 450, 575, 700, 825 };
+
+// Reverse Futility Values
+static const int RevFutilityDepth = 5;
+static const int RevFutilityMargin[6] = { 0, 200, 400, 600, 800, 1000 };
+
+// LMR Values
+static const int LateMoveDepth = 3;
+static const int FullSearchMoves = 2;
+int LMRTable[64][64];
+
+void InitSearch() {
+	// creating the LMR table entries (idea from Ethereal)
+	for (int moveDepth = 1; moveDepth < 64; moveDepth++)
+		for (int played = 1; played < 64; played++)
+			LMRTable[moveDepth][played] = 1 + (int)(log(moveDepth) * log(played) / 1.75);
+}
+
+static void CheckUp(Position* pos, SearchInfo* info) {
+	if ((info->timeLimit && GetTimeMs() - info->timeStart > info->timeLimit) ||
+		(info->nodesLimit && info->nodes > info->nodesLimit))
+		info->stop = TRUE;
+	ReadInput(pos, info);
+}
+
+static void PickNextMove(int moveNum, S_MOVELIST* list) {
+
+	S_MOVE temp;
+	int index = 0;
+	int bestScore = 0;
+	int bestNum = moveNum;
+
+	for (index = moveNum; index < list->count; ++index) {
+		if (list->moves[index].score > bestScore) {
+			bestScore = list->moves[index].score;
+			bestNum = index;
+		}
+	}
+
+	ASSERT(moveNum >= 0 && moveNum < list->count);
+	ASSERT(bestNum >= 0 && bestNum < list->count);
+	ASSERT(bestNum >= moveNum);
+
+	temp = list->moves[moveNum];
+	list->moves[moveNum] = list->moves[bestNum];
+	list->moves[bestNum] = temp;
+}
+
+static int IsRepetition(const Position* pos) {
+
+	int index = 0;
+
+	for (index = pos->hisPly - pos->fiftyMove; index < pos->hisPly - 1; ++index) {
+		ASSERT(index >= 0 && index < MAXGAMEMOVES);
+		if (pos->posKey == pos->history[index].posKey) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+static void ClearForSearch(Position* pos, SearchInfo* info) {
+
+	int index = 0;
+	int index2 = 0;
+
+	for (index = 0; index < 13; ++index) {
+		for (index2 = 0; index2 < BRD_SQ_NUM; ++index2) {
+			pos->searchHistory[index][index2] = 0;
+		}
+	}
+
+	for (index = 0; index < 2; ++index) {
+		for (index2 = 0; index2 < MAX_PLY; ++index2) {
+			pos->searchKillers[index][index2] = 0;
+		}
+	}
+
+	pos->HashTable.overWrite = 0;
+	pos->HashTable.hit = 0;
+	pos->HashTable.cut = 0;
+	pos->ply = 0;
+
+	info->stop = 0;
+	info->nodes = 0;
+}
+
+static void PrintInfo(Position* pos, SearchInfo* info, int bestScore, int depth) {
+	if (abs(bestScore) > ISMATE) {
+		bestScore = (bestScore > 0 ? INFINITE - bestScore + 1 : -INFINITE - bestScore) / 2;
+		printf("info score mate %d depth %d nodes %llu time %llu ", bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
+	}
+	else
+		printf("info score cp %d depth %d nodes %llu time %llu ", bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
+	int pvMoves = GetPvLine(depth, pos);
+	printf("hashfull %d pv", Permill(&pos->HashTable));
+	for (int pvNum = 0; pvNum < pvMoves; ++pvNum)
+		printf(" %s", MoveToUci(pos->PvArray[pvNum]));
+	printf("\n");
+}
+
+static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info) {
+
+	if ((++info->nodes & 2047) == 0) {
+		CheckUp(pos, info);
+	}
+
+	if (IsRepetition(pos) || pos->fiftyMove >= 100) {
+		return 0;
+	}
+
+	if (pos->ply > MAX_PLY - 1) {
+		return EvalPosition(pos);
+	}
+
+	// Mate Distance Pruning
+	alpha = MAX(alpha, -INFINITE + pos->ply);
+	beta = MIN(beta, INFINITE - pos->ply);
+	if (alpha >= beta) {
+		return alpha;
+	}
+
+	int Score = EvalPosition(pos);
+
+	ASSERT(Score > -INFINITE && Score < INFINITE);
+
+	if (Score >= beta) {
+		return beta;
+	}
+
+	if (Score > alpha) {
+		alpha = Score;
+	}
+
+	S_MOVELIST list[1];
+	GenerateAllCaps(pos, list);
+
+	int MoveNum = 0;
+	int Legal = 0;
+	Score = -INFINITE;
+
+	for (MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+
+		PickNextMove(MoveNum, list);
+
+		if (!MakeMove(pos, list->moves[MoveNum].move)) {
+			continue;
+		}
+
+		Legal++;
+		Score = -SearchQuiescence(-beta, -alpha, pos, info);
+		TakeMove(pos);
+
+		if (info->stop == TRUE) {
+			return 0;
+		}
+
+		if (Score > alpha) {
+			if (Score >= beta)
+				return beta;
+			alpha = Score;
+		}
+	}
+
+	ASSERT(alpha >= OldAlpha);
+
+	return alpha;
+}
+
+static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo* info, int DoNull, int DoLMR) {
+
+	int InCheck = SqAttacked(pos->KingSq[pos->side], pos->side ^ 1, pos);
+
+	// Check Extension (Extend all checks before dropping into Quiescence)
+	if (InCheck) {
+		depth++;
+	}
+
+	if (depth <= 0) {
+		return SearchQuiescence(alpha, beta, pos, info);
+		// return EvalPosition(pos);
+	}
+
+	if ((++info->nodes & 2047) == 0) {
+		CheckUp(pos, info);
+	}
+
+	if ((IsRepetition(pos) || pos->fiftyMove >= 100) && pos->ply) {
+		return 0;
+	}
+
+	if (pos->ply > MAX_PLY - 1) {
+		return EvalPosition(pos);
+	}
+
+	// Mate Distance Pruning (finds mates more quickly)
+	alpha = MAX(alpha, -INFINITE + pos->ply);
+	beta = MIN(beta, INFINITE - pos->ply);
+	if (alpha >= beta) {
+		return alpha;
+	}
+
+	int Score = -INFINITE;
+	int PvMove = NOMOVE;
+
+	if (ProbeHashEntry(pos, &PvMove, &Score, alpha, beta, depth) == TRUE) {
+		pos->HashTable.cut++;
+		return Score;
+	}
+
+	int positionEval = EvalPosition(pos);
+
+	// Razoring (prunes near alpha)
+	if (depth <= RazorDepth && !PvMove && !InCheck && positionEval + RazorMargin[depth] <= alpha) {
+		// drop into qSearch if move most likely won't beat alpha
+		Score = SearchQuiescence(alpha - RazorMargin[depth], beta - RazorMargin[depth], pos, info);
+		if (Score + RazorMargin[depth] <= alpha) {
+			return Score;
+		}
+	}
+
+	// Reverse Futility Pruning (prunes near beta)
+	if (depth <= RevFutilityDepth && !PvMove && !InCheck && abs(beta) < ISMATE && positionEval - RevFutilityMargin[depth] >= beta) {
+		return positionEval - RevFutilityMargin[depth];
+	}
+
+	// Null Move Pruning
+	if (depth >= minDepth && DoNull && !InCheck && pos->ply && (pos->bigPce[pos->side] > 0) && positionEval >= beta) {
+		MakeNullMove(pos);
+		Score = -SearchAlpha(-beta, -beta + 1, depth - 1 - R, pos, info, FALSE, FALSE);
+		TakeNullMove(pos);
+		if (info->stop == TRUE) {
+			return 0;
+		}
+
+		if (Score >= beta && abs(Score) < ISMATE)
+			return beta;
+	}
+
+	S_MOVELIST list[1];
+	GenerateAllMoves(pos, list);
+
+	int MoveNum = 0;
+	int Legal = 0;
+	int OldAlpha = alpha;
+	int BestMove = NOMOVE;
+
+	int BestScore = -INFINITE;
+
+	Score = -INFINITE;
+
+	if (PvMove != NOMOVE) {
+		for (MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+			if (list->moves[MoveNum].move == PvMove) {
+				list->moves[MoveNum].score = 2000000;
+				break;
+			}
+		}
+	}
+
+	int FoundPv = FALSE;
+
+	// Futility Pruning flag (if node is futile (unlikely to raise alpha), this flag is set)
+	int FutileNode = (depth <= FutilityDepth && positionEval + FutilityMargin[depth] <= alpha && abs(Score) < ISMATE) ? 1 : 0;
+
+	for (MoveNum = 0; MoveNum < list->count; ++MoveNum) {
+
+		PickNextMove(MoveNum, list);
+
+		// Futility Pruning (if node is considered futile, and at least 1 legal move has been searched, don't search any more quiet moves in the position)
+		if (Legal && FutileNode && !(list->moves[MoveNum].move & MFLAGCAP) && !(list->moves[MoveNum].move & MFLAGPROM) && !SqAttacked(pos->KingSq[pos->side], pos->side ^ 1, pos)) {
+			continue;
+		}
+
+		// if move is legal, play it
+		if (!MakeMove(pos, list->moves[MoveNum].move)) {
+			continue;
+		}
+
+		Legal++;
+
+		// PVS (speeds up search with good move ordering)
+		if (FoundPv == TRUE) {
+
+			// Late Move Reductions at Root (reduces moves if past full move search limit (not reducing captures, checks, or promotions))
+			if (depth >= LateMoveDepth && !(list->moves[MoveNum].move & MFLAGCAP) && !(list->moves[MoveNum].move & MFLAGPROM) && !SqAttacked(pos->KingSq[pos->side], pos->side ^ 1, pos) && DoLMR && Legal > FullSearchMoves) {
+
+				// get initial reduction depth
+				int reduce = LMRTable[MIN(depth, 63)][MIN(Legal, 63)];
+
+				// reduce less for killer moves
+				if ((list->moves[MoveNum].score == 800000 || list->moves[MoveNum].score == 900000)) reduce--;
+
+				// do not fall directly into quiescence search
+				reduce = MIN(depth - 1, MAX(reduce, 1));
+
+				// print reduction depth at move number
+				// printf("reduction: %d depth: %d moveNum: %d\n", (reduce - 1), depth, Legal);
+
+				// search with the reduced depth
+				Score = -SearchAlpha(-alpha - 1, -alpha, depth - reduce, pos, info, TRUE, FALSE);
+
+			}
+			else {
+				// If LMR conditions not met (not at root, or tactical move), do a null window search (because we are using PVS)
+				Score = -SearchAlpha(-alpha - 1, -alpha, depth - 1, pos, info, TRUE, TRUE);
+
+			}
+			if (Score > alpha && Score < beta) {
+				// If the LMR or the null window fails, do a full search
+				Score = -SearchAlpha(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
+
+			}
+		}
+		else {
+			// If no PV found, do a full search
+			Score = -SearchAlpha(-beta, -alpha, depth - 1, pos, info, TRUE, FALSE);
+
+		}
+
+		TakeMove(pos);
+
+		if (info->stop)
+			return 0;
+		if (Score > BestScore) {
+			BestScore = Score;
+			BestMove = list->moves[MoveNum].move;
+			if (Score > alpha) {
+				if (Score >= beta) {
+
+					if (!(list->moves[MoveNum].move & MFLAGCAP)) {
+						pos->searchKillers[1][pos->ply] = pos->searchKillers[0][pos->ply];
+						pos->searchKillers[0][pos->ply] = list->moves[MoveNum].move;
+					}
+
+					StoreHashEntry(pos, BestMove, beta, HFBETA, depth);
+
+					return beta;
+				}
+				FoundPv = TRUE;
+				alpha = Score;
+
+				if (!(list->moves[MoveNum].move & MFLAGCAP)) {
+					pos->searchHistory[pos->pieces[FROMSQ(BestMove)]][TOSQ(BestMove)] += depth;
+				}
+			}
+		}
+	}
+
+	if (Legal == 0) {
+		if (InCheck) {
+			return -INFINITE + pos->ply;
+		}
+		else {
+			return 0;
+		}
+	}
+
+	ASSERT(alpha >= OldAlpha);
+
+	if (alpha != OldAlpha) {
+		StoreHashEntry(pos, BestMove, BestScore, HFEXACT, depth);
+	}
+	else {
+		StoreHashEntry(pos, BestMove, alpha, HFALPHA, depth);
+	}
+
+	return alpha;
+}
+
+void SearchIteratively(Position* pos, SearchInfo* info) {
+	ClearForSearch(pos, info);
+	for (int depth = 1; depth <= info->depthLimit; ++depth) {
+		int score = SearchAlpha(-INFINITE, INFINITE, depth, pos, info, TRUE, TRUE);
+		if (info->stop)
+			break;
+		if (info->post)
+			PrintInfo(pos, info, score, depth);
+	}
+	if (info->post)
+		printf("bestmove %s\n", MoveToUci(pos->PvArray[0]));
+}
+
+static void ClearPiece(const int sq, Position* pos) {
+
+
+	int pce = pos->pieces[sq];
+
+	ASSERT(PieceValid(pce));
+
+	int col = PieceCol[pce];
+	int index = 0;
+	int t_pceNum = -1;
+
+	ASSERT(SideValid(col));
+
+	HASH_PCE(pce, sq);
+
+	pos->pieces[sq] = EMPTY;
+	pos->material[col] -= PieceVal[pce];
+
+	if (PieceBig[pce]) {
+		pos->bigPce[col]--;
+		if (PieceMaj[pce]) {
+			pos->majPce[col]--;
+		}
+		else {
+			pos->minPce[col]--;
+		}
+	}
+	else {
+		CLRBIT(pos->pawns[col], SQ64(sq));
+		CLRBIT(pos->pawns[BOTH], SQ64(sq));
+	}
+
+	for (index = 0; index < pos->pceNum[pce]; ++index) {
+		if (pos->pList[pce][index] == sq) {
+			t_pceNum = index;
+			break;
+		}
+	}
+
+	ASSERT(t_pceNum != -1);
+	ASSERT(t_pceNum >= 0 && t_pceNum < 10);
+
+	pos->pceNum[pce]--;
+
+	pos->pList[pce][t_pceNum] = pos->pList[pce][pos->pceNum[pce]];
+
+}
+
+
+static void AddPiece(const int sq, Position* pos, const int pce) {
+
+	ASSERT(PieceValid(pce));
+	ASSERT(SqOnBoard(sq));
+
+	int col = PieceCol[pce];
+	ASSERT(SideValid(col));
+
+	HASH_PCE(pce, sq);
+
+	pos->pieces[sq] = pce;
+
+	if (PieceBig[pce]) {
+		pos->bigPce[col]++;
+		if (PieceMaj[pce]) {
+			pos->majPce[col]++;
+		}
+		else {
+			pos->minPce[col]++;
+		}
+	}
+	else {
+		SETBIT(pos->pawns[col], SQ64(sq));
+		SETBIT(pos->pawns[BOTH], SQ64(sq));
+	}
+
+	pos->material[col] += PieceVal[pce];
+	pos->pList[pce][pos->pceNum[pce]++] = sq;
+
+}
+
+static void MovePiece(const int from, const int to, Position* pos) {
+
+	ASSERT(SqOnBoard(from));
+	ASSERT(SqOnBoard(to));
+
+	int index = 0;
+	int pce = pos->pieces[from];
+	int col = PieceCol[pce];
+	ASSERT(SideValid(col));
+	ASSERT(PieceValid(pce));
+
+#ifdef DEBUG
+	int t_PieceNum = FALSE;
+#endif
+
+	HASH_PCE(pce, from);
+	pos->pieces[from] = EMPTY;
+
+	HASH_PCE(pce, to);
+	pos->pieces[to] = pce;
+
+	if (!PieceBig[pce]) {
+		CLRBIT(pos->pawns[col], SQ64(from));
+		CLRBIT(pos->pawns[BOTH], SQ64(from));
+		SETBIT(pos->pawns[col], SQ64(to));
+		SETBIT(pos->pawns[BOTH], SQ64(to));
+	}
+
+	for (index = 0; index < pos->pceNum[pce]; ++index) {
+		if (pos->pList[pce][index] == from) {
+			pos->pList[pce][index] = to;
+#ifdef DEBUG
+			t_PieceNum = TRUE;
+#endif
+			break;
+		}
+	}
+	ASSERT(t_PieceNum);
+}
+
+int MakeMove(Position* pos, int move) {
+
+	int from = FROMSQ(move);
+	int to = TOSQ(move);
+	int side = pos->side;
+
+	ASSERT(SqOnBoard(from));
+	ASSERT(SqOnBoard(to));
+	ASSERT(SideValid(side));
+	ASSERT(PieceValid(pos->pieces[from]));
+	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
+	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+
+	pos->history[pos->hisPly].posKey = pos->posKey;
+
+	if (move & MFLAGEP) {
+		if (side == WHITE) {
+			ClearPiece(to - 10, pos);
+		}
+		else {
+			ClearPiece(to + 10, pos);
+		}
+	}
+	else if (move & MFLAGCA) {
+		switch (to) {
+		case C1:
+			MovePiece(A1, D1, pos);
+			break;
+		case C8:
+			MovePiece(A8, D8, pos);
+			break;
+		case G1:
+			MovePiece(H1, F1, pos);
+			break;
+		case G8:
+			MovePiece(H8, F8, pos);
+			break;
+		default: ASSERT(FALSE); break;
+		}
+	}
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+	HASH_CA;
+
+	pos->history[pos->hisPly].move = move;
+	pos->history[pos->hisPly].fiftyMove = pos->fiftyMove;
+	pos->history[pos->hisPly].enPas = pos->enPas;
+	pos->history[pos->hisPly].castlePerm = pos->castlePerm;
+
+	pos->castlePerm &= CastlePerm[from];
+	pos->castlePerm &= CastlePerm[to];
+	pos->enPas = NO_SQ;
+
+	HASH_CA;
+
+	int captured = CAPTURED(move);
+	pos->fiftyMove++;
+
+	if (captured != EMPTY) {
+		ASSERT(PieceValid(captured));
+		ClearPiece(to, pos);
+		pos->fiftyMove = 0;
+	}
+
+	pos->hisPly++;
+	pos->ply++;
+
+	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
+	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+
+	if (PiecePawn[pos->pieces[from]]) {
+		pos->fiftyMove = 0;
+		if (move & MFLAGPS) {
+			if (side == WHITE) {
+				pos->enPas = from + 10;
+				ASSERT(RanksBrd[pos->enPas] == RANK_3);
+			}
+			else {
+				pos->enPas = from - 10;
+				ASSERT(RanksBrd[pos->enPas] == RANK_6);
+			}
+			HASH_EP;
+		}
+	}
+
+	MovePiece(from, to, pos);
+
+	int prPce = PROMOTED(move);
+	if (prPce != EMPTY) {
+		ASSERT(PieceValid(prPce) && !PiecePawn[prPce]);
+		ClearPiece(to, pos);
+		AddPiece(to, pos, prPce);
+	}
+
+	if (PieceKing[pos->pieces[to]]) {
+		pos->KingSq[pos->side] = to;
+	}
+
+	pos->side ^= 1;
+	HASH_SIDE;
+
+
+
+	if (SqAttacked(pos->KingSq[side], pos->side, pos)) {
+		TakeMove(pos);
+		return FALSE;
+	}
+
+	return TRUE;
+
+}
+
+void TakeMove(Position* pos) {
+
+
+	pos->hisPly--;
+	pos->ply--;
+
+	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
+	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+
+	int move = pos->history[pos->hisPly].move;
+	int from = FROMSQ(move);
+	int to = TOSQ(move);
+
+	ASSERT(SqOnBoard(from));
+	ASSERT(SqOnBoard(to));
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+	HASH_CA;
+
+	pos->castlePerm = pos->history[pos->hisPly].castlePerm;
+	pos->fiftyMove = pos->history[pos->hisPly].fiftyMove;
+	pos->enPas = pos->history[pos->hisPly].enPas;
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+	HASH_CA;
+
+	pos->side ^= 1;
+	HASH_SIDE;
+
+	if (MFLAGEP & move) {
+		if (pos->side == WHITE) {
+			AddPiece(to - 10, pos, bP);
+		}
+		else {
+			AddPiece(to + 10, pos, wP);
+		}
+	}
+	else if (MFLAGCA & move) {
+		switch (to) {
+		case C1: MovePiece(D1, A1, pos); break;
+		case C8: MovePiece(D8, A8, pos); break;
+		case G1: MovePiece(F1, H1, pos); break;
+		case G8: MovePiece(F8, H8, pos); break;
+		default: ASSERT(FALSE); break;
+		}
+	}
+
+	MovePiece(to, from, pos);
+
+	if (PieceKing[pos->pieces[from]]) {
+		pos->KingSq[pos->side] = from;
+	}
+
+	int captured = CAPTURED(move);
+	if (captured != EMPTY) {
+		ASSERT(PieceValid(captured));
+		AddPiece(to, pos, captured);
+	}
+
+	if (PROMOTED(move) != EMPTY) {
+		ASSERT(PieceValid(PROMOTED(move)) && !PiecePawn[PROMOTED(move)]);
+		ClearPiece(from, pos);
+		AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? wP : bP));
+	}
+
+
+}
+
+
+void MakeNullMove(Position* pos) {
+
+
+	pos->ply++;
+	pos->history[pos->hisPly].posKey = pos->posKey;
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+
+	pos->history[pos->hisPly].move = NOMOVE;
+	pos->history[pos->hisPly].fiftyMove = pos->fiftyMove;
+	pos->history[pos->hisPly].enPas = pos->enPas;
+	pos->history[pos->hisPly].castlePerm = pos->castlePerm;
+	pos->enPas = NO_SQ;
+
+	pos->side ^= 1;
+	pos->hisPly++;
+	HASH_SIDE;
+
+	return;
+} // MakeNullMove
+
+void TakeNullMove(Position* pos) {
+
+	pos->hisPly--;
+	pos->ply--;
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+
+	pos->castlePerm = pos->history[pos->hisPly].castlePerm;
+	pos->fiftyMove = pos->history[pos->hisPly].fiftyMove;
+	pos->enPas = pos->history[pos->hisPly].enPas;
+
+	if (pos->enPas != NO_SQ) HASH_EP;
+	pos->side ^= 1;
+	HASH_SIDE;
+
+}
 
 int SqAttacked(const int sq, const int side, const Position* pos) {
 
@@ -986,7 +1743,7 @@ static void UciBench(Position* pos, SearchInfo* info) {
 	PrintSummary(elapsed, info->nodes);
 }
 
-void ParseGo(char* command, SearchInfo* info, Position* pos) {
+static void ParseGo(char* command, SearchInfo* info, Position* pos) {
 	ResetInfo(info);
 	int wtime = 0;
 	int btime = 0;
