@@ -119,12 +119,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.c" />
-    <ClCompile Include="evaluate.c" />
-    <ClCompile Include="movegen.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="program.h" />
+    <ClCompile Include="alien.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -15,19 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.c">
+    <ClCompile Include="alien.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="evaluate.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="movegen.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="program.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
