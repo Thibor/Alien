@@ -9,22 +9,8 @@
 #define HASH_MAX 1024
 #define HASH_DEF 64
 #define HASH_MIN 1
-
-#ifndef DEBUG
-#define ASSERT(n)
-#else
-#define ASSERT(n) \
-if(!(n)) { \
-printf("%s - Failed",#n); \
-printf("On %s ",__DATE__); \
-printf("At %s ",__TIME__); \
-printf("In File %s ",__FILE__); \
-printf("At Line %d\n",__LINE__); \
-exit(1);}
-#endif
-
 #define NAME "Alien"
-#define VERSION "2025-09-25"
+#define VERSION "2026-05-25"
 #define FALSE 0
 #define TRUE 1
 #define U64 unsigned __int64
@@ -59,8 +45,12 @@ exit(1);}
 #define MIRROR64(sq) (Mirror64[(sq)])
 #define MAX(a, b) ((a > b) ? a : b)
 #define MIN(a, b) ((a < b) ? a : b)
+#define FLIP(sq) ((sq)^56)
+#define MOVE(f,t,ca,pro,fl) ( (f) | ((t) << 7) | ( (ca) << 14 ) | ( (pro) << 20 ) | (fl))
+#define SQOFFBOARD(sq) (FilesBrd[(sq)]==OFFBOARD)
 
 enum { EMPTY, wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK };
+enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 enum { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NONE };
 enum { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NONE };
 enum { WHITE, BLACK, BOTH };
@@ -129,14 +119,13 @@ typedef struct {
 	int bigPce[2];
 	int majPce[2];
 	int minPce[2];
-	int material[2];
 
 	S_UNDO history[MAXGAMEMOVES];
 
 	// piece list
 	int pList[13][10];
 
-	S_HASHTABLE HashTable;
+	S_HASHTABLE hashTable;
 	int PvArray[MAX_PLY];
 
 	int searchHistory[13][BRD_SQ_NUM];
@@ -183,7 +172,7 @@ extern char FileChar[];
 extern int PieceBig[13];
 extern int PieceMaj[13];
 extern int PieceMin[13];
-extern int PieceVal[13];
+extern int pieceVal[13];
 extern int PieceCol[13];
 extern int PiecePawn[13];
 
@@ -205,12 +194,7 @@ extern U64 BlackPassedMask[64];
 extern U64 WhitePassedMask[64];
 extern U64 IsolatedMask[64];
 
-/* FUNCTIONS */
-
-// init.c
 extern void AllInit();
-
-// bitboards.c
 extern void PrintBitBoard(U64 bb);
 extern int PopBit(U64* bb);
 extern int CountBits(U64 b);
@@ -224,49 +208,28 @@ extern void ResetBoard(Position* pos);
 extern int SetFen(char* fen, Position* pos);
 extern void PrintBoard(const Position* pos);
 extern void UpdateListsMaterial(Position* pos);
-
-// attack.c
 extern int SqAttacked(const int sq, const int side, const Position* pos);
-
-// io.c
 extern char* MoveToUci(const int move);
 extern char* PrSq(const int sq);
 extern void PrintMoveList(const S_MOVELIST* list);
 extern int ParseMove(char* ptrChar, Position* pos);
-
-// movegen.c
 extern void GenerateAllMoves(const Position* pos, S_MOVELIST* list);
 extern void GenerateAllCaps(const Position* pos, S_MOVELIST* list);
 extern int MoveExists(Position* pos, const int move);
 extern void InitMvvLva();
-
-// makemove.c
 extern int MakeMove(Position* pos, int move);
 extern void TakeMove(Position* pos);
 extern void MakeNullMove(Position* pos);
 extern void TakeNullMove(Position* pos);
-
-// search.c
 extern void SearchIteratively(Position* pos, SearchInfo* info);
 extern void InitSearch();
-
-// misc.c
 extern U64 GetTimeMs();
 extern void ReadInput(Position* pos, SearchInfo* info);
-
-// pvtable.c
 extern void InitHashTable(S_HASHTABLE* table, const int MB);
 extern void StoreHashEntry(Position* pos, const int move, int score, const int flags, const int depth);
 extern int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, int depth);
 extern int ProbePvMove(const Position* pos);
 extern int GetPvLine(const int depth, Position* pos);
-extern void ClearHashTable(S_HASHTABLE* table);
-extern int Permill(S_HASHTABLE* table);
-
-// evaluate.c
-extern int EvalPosition(Position* pos);
-
-// uci.c
 extern void UciCommand(Position* pos, SearchInfo* info, char* line);
 extern void UciLoop(Position* pos, SearchInfo* info);
 
@@ -284,10 +247,10 @@ char FileChar[] = "abcdefgh";
 int PieceBig[13] = { FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE };
 int PieceMaj[13] = { FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE };
 int PieceMin[13] = { FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE };
-int PieceVal[13] = { 0, 100, 325, 325, 550, 1000, 50000, 100, 325, 325, 550, 1000, 50000 };
-int PieceCol[13] = { BOTH, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-	BLACK, BLACK, BLACK, BLACK, BLACK, BLACK };
-
+int insufficientMaterial[13] = { 0,3,1,2,3,3,0,3,1,2,3,3,0 };
+int materialMg[13] = { 0, 82, 337, 365, 477, 1025, 0, 94, 281, 297, 512, 936, 0 };
+int materialEg[13] = { 0, 94, 281, 297, 512, 936, 0, 82, 337, 365, 477, 1025, 0 };
+int PieceCol[13] = { BOTH, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,BLACK, BLACK, BLACK, BLACK, BLACK, BLACK };
 int PiecePawn[13] = { FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE };
 int PieceKnight[13] = { FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE };
 int PieceKing[13] = { FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE };
@@ -400,153 +363,158 @@ const int QueenSemiOpenFile = 3;
 const int RookOpenFile = 10;
 const int RookSemiOpenFile = 5;
 
-// Piece Square Tables (by Lyudmil)
-const int PawnMG[64] =
-{
-	0,   0,   0,   0,   0,   0,   0,   0,
-	-5,  -2,   4,   5,   5,   4,  -2,  -5,
-	-4,  -2,   5,   7,   7,   5,  -2,  -4,
-	-2,  -1,   9,  13,  13,   9,  -1,  -2,
-	2,   4,  13,  21,  21,  13,   4,   2,
-	10,  21,  25,  29,  29,  25,  21,  10,
-	1,   2,   5,   9,   9,   5,   2,   1,             // Pawns 7 Rank
-	0,   0,   0,   0,   0,   0,   0,   0
+int mg_pawn_table[64] = {
+	  0,   0,   0,   0,   0,   0,  0,   0,
+	 98, 134,  61,  95,  68, 126, 34, -11,
+	 -6,   7,  26,  31,  65,  56, 25, -20,
+	-14,  13,   6,  21,  23,  12, 17, -23,
+	-27,  -2,  -5,  12,  17,   6, 10, -25,
+	-26,  -4,  -4, -10,   3,   3, 33, -12,
+	-35,  -1, -20, -23, -15,  24, 38, -22,
+	  0,   0,   0,   0,   0,   0,  0,   0,
 };
 
-const int PawnEG[64] =
-{
-	0,   0,   0,   0,   0,   0,   0,   0,
-	-3,  -1,   2,   3,   3,   2,  -1,  -3,
-	-2,  -1,   3,   4,   4,   3,  -1,  -2,
-	-1,   0,   4,   7,   7,   4,   0,  -1,
-	1,   2,   7,  11,  11,   7,   2,   1,
-	5,  11,  13,  14,  14,  13,  11,   5,
-	0,   1,   3,   5,   5,   3,   1,   0,    // Pawns 7 Rank
-	0,   0,   0,   0,   0,   0,   0,   0
+int eg_pawn_table[64] = {
+	  0,   0,   0,   0,   0,   0,   0,   0,
+	178, 173, 158, 134, 147, 132, 165, 187,
+	 94, 100,  85,  67,  56,  53,  82,  84,
+	 32,  24,  13,   5,  -2,   4,  17,  17,
+	 13,   9,  -3,  -7,  -7,  -8,   3,  -1,
+	  4,   7,  -6,   1,   0,  -5,  -1,  -8,
+	 13,   8,   8,  10,  13,   0,   2,  -7,
+	  0,   0,   0,   0,   0,   0,   0,   0,
 };
 
-const int KnightMG[64] =
-{
-	-31, -23, -20, -16, -16, -20, -23, -31,
-	-23, -16, -12,  -8,  -8, -12, -16, -23,
-	-8,  -4,   0,   8,   8,   0,  -4,  -8,
-	-4,   8,  12,  16,  16,  12,   8,  -4,
-	8,  16,  20,  23,  23,  20,  16,   8,
-	23,  27,  31,  35,  35,  31,  27,  23,
-	4,   8,  12,  16,  16,  12,   8,   4,
-	4,   4,   4,   4,   4,   4,   4,   4,
+int mg_knight_table[64] = {
+	-167, -89, -34, -49,  61, -97, -15, -107,
+	 -73, -41,  72,  36,  23,  62,   7,  -17,
+	 -47,  60,  37,  65,  84, 129,  73,   44,
+	  -9,  17,  19,  53,  37,  69,  18,   22,
+	 -13,   4,  16,  13,  28,  19,  21,   -8,
+	 -23,  -9,  12,  10,  19,  17,  25,  -16,
+	 -29, -53, -12,  -3,  -1,  18, -14,  -19,
+	-105, -21, -58, -33, -17, -28, -19,  -23,
 };
 
-const int KnightEG[64] =
-{
-	-39, -27, -23, -20, -20, -23, -27, -39,
-	-27, -20, -12,  -8,  -8, -12, -20, -27,
-	-8,  -4,   0,   8,   8,   0,  -4,  -8,
-	-4,   8,  12,  16,  16,  12,   8,  -4,
-	8,  16,  20,  23,  23,  20,  16,   8,
-	12,  23,  27,  31,  31,  27,  23,  12,
-	-2,   2,   4,   8,   8,   4,   2,  -2,
-	-16,  -8,  -4,  -4,  -4,  -4,  -8, -16,
+int eg_knight_table[64] = {
+	-58, -38, -13, -28, -31, -27, -63, -99,
+	-25,  -8, -25,  -2,  -9, -25, -24, -52,
+	-24, -20,  10,   9,  -1,  -9, -19, -41,
+	-17,   3,  22,  22,  22,  11,   8, -18,
+	-18,  -6,  16,  25,  16,  17,   4, -18,
+	-23,  -3,  -1,  15,  10,  -3, -20, -22,
+	-42, -20, -10,  -5,  -2, -20, -23, -44,
+	-29, -51, -23, -15, -22, -18, -50, -64,
 };
 
-const int BishopMG[64] =
-{
-	-31, -23, -20, -16, -16, -20, -23, -31,
-	-23, -16, -12,  -8,  -8, -12, -16, -23,
-	-8,  -4,   0,   8,   8,   0,  -4,  -8,
-	-4,   8,  12,  16,  16,  12,   8,  -4,
-	8,  16,  20,  23,  23,  20,  16,   8,
-	23,  27,  31,  35,  35,  31,  27,  23,
-	4,   8,  12,  16,  16,  12,   8,   4,
-	4,   4,   4,   4,   4,   4,   4,   4,
+int mg_bishop_table[64] = {
+	-29,   4, -82, -37, -25, -42,   7,  -8,
+	-26,  16, -18, -13,  30,  59,  18, -47,
+	-16,  37,  43,  40,  35,  50,  37,  -2,
+	 -4,   5,  19,  50,  37,  37,   7,  -2,
+	 -6,  13,  13,  26,  34,  12,  10,   4,
+	  0,  15,  15,  15,  14,  27,  18,  10,
+	  4,  15,  16,   0,   7,  21,  33,   1,
+	-33,  -3, -14, -21, -13, -12, -39, -21,
 };
 
-const int BishopEG[64] =
-{
-	-39, -27, -23, -20, -20, -23, -27, -39,
-	-27, -20, -12,  -8,  -8, -12, -20, -27,
-	-8,  -4,   0,   8,   8,   0,  -4,  -8,
-	-4,   8,  12,  16,  16,  12,   8,  -4,
-	8,  16,  20,  23,  23,  20,  16,   8,
-	12,  23,  27,  31,  31,  27,  23,  12,
-	-2,   2,   4,   8,   8,   4,   2,  -2,
-	-16,  -8,  -4,  -4,  -4,  -4,  -8, -16,
+int eg_bishop_table[64] = {
+	-14, -21, -11,  -8, -7,  -9, -17, -24,
+	 -8,  -4,   7, -12, -3, -13,  -4, -14,
+	  2,  -8,   0,  -1, -2,   6,   0,   4,
+	 -3,   9,  12,   9, 14,  10,   3,   2,
+	 -6,   3,  13,  19,  7,  10,  -3,  -9,
+	-12,  -3,   8,  10, 13,   3,  -7, -15,
+	-14, -18,  -7,  -1,  4,  -9, -15, -27,
+	-23,  -9, -23,  -5, -9, -16,  -5, -17,
 };
 
-const int RookMG[64] =
-{
-	-10,  -8,  -6,  -4,  -4,  -6,  -8, -10,
-	-8,  -6,  -4,  -2,  -2,  -4,  -6,  -8,
-	-4,  -2,   0,   4,   4,   0,  -2,  -4,
-	-2,   2,   4,   8,   8,   4,   2,  -2,
-	2,   4,   8,  12,  12,   8,   4,   2,
-	4,   8,   12, 16,  16,  12,   8,   4,
-	20,  21,   23, 23,  23,  23,  21,  20,
-	18,  18,   20, 20,  20,  20,  18,  18,
+int mg_rook_table[64] = {
+	 32,  42,  32,  51, 63,  9,  31,  43,
+	 27,  32,  58,  62, 80, 67,  26,  44,
+	 -5,  19,  26,  36, 17, 45,  61,  16,
+	-24, -11,   7,  26, 24, 35,  -8, -20,
+	-36, -26, -12,  -1,  9, -7,   6, -23,
+	-45, -25, -16, -17,  3,  0,  -5, -33,
+	-44, -16, -20,  -9, -1, 11,  -6, -71,
+	-19, -13,   1,  17, 16,  7, -37, -26,
 };
 
-const int RookEG[64] =
-{
-	-10,  -8,  -6,  -4,  -4,  -6,  -8, -10,
-	-8,  -6,  -4,  -2,  -2,  -4,  -6,  -8,
-	-4,  -2,   0,   4,   4,   0,  -2,  -4,
-	-2,   2,   4,   8,   8,   4,   2,  -2,
-	2,   4,   8,  12,  12,   8,   4,   2,
-	4,   8,  12,  16,  16,  12,   8,   4,
-	20,  21,  23,  23,  23,  23,  21,  20,
-	18,  18,  20,  20,  20,  20,  18,  18,
+int eg_rook_table[64] = {
+	13, 10, 18, 15, 12,  12,   8,   5,
+	11, 13, 13, 11, -3,   3,   8,   3,
+	 7,  7,  7,  5,  4,  -3,  -5,  -3,
+	 4,  3, 13,  1,  2,   1,  -1,   2,
+	 3,  5,  8,  4, -5,  -6,  -8, -11,
+	-4,  0, -5, -1, -7, -12,  -8, -16,
+	-6, -6,  0,  2, -9,  -9, -11,  -3,
+	-9,  2,  3, -1, -5, -13,   4, -20,
 };
 
-const int QueenMG[64] =
-{
-	-23, -20, -16, -12, -12, -16, -20, -23,
-	-18, -14, -12,  -8,  -8, -12, -14, -18,
-	-16,  -8,   0,   8,   8,   0,  -8, -16,
-	-8,   0,  12,  16,  16,  12,   0,  -8,
-	4,  12,  16,  23,  23,  16,  12,   4,
-	16,  23,  27,  31,  31,  27,  23,  16,
-	4,  12,  16,  23,  23,  16,  12,   4,
-	2,   8,  12,  12,  12,  12,   8,   2,
+int mg_queen_table[64] = {
+	-28,   0,  29,  12,  59,  44,  43,  45,
+	-24, -39,  -5,   1, -16,  57,  28,  54,
+	-13, -17,   7,   8,  29,  56,  47,  57,
+	-27, -27, -16, -16,  -1,  17,  -2,   1,
+	 -9, -26,  -9, -10,  -2,  -4,   3,  -3,
+	-14,   2, -11,  -2,  -5,   2,  14,   5,
+	-35,  -8,  11,   2,   8,  15,  -3,   1,
+	 -1, -18,  -9,  10, -15, -25, -31, -50,
 };
 
-const int QueenEG[64] =
-{
-	-23, -20, -16, -12, -12, -16, -20, -23,
-	-18, -14, -12,  -8,  -8, -12, -14, -18,
-	-16,  -8,   0,   8,   8,   0,  -8, -16,
-	-8,   0,  12,  16,  16,  12,   0,  -8,
-	4,  12,  16,  23,  23,  16,  12,   4,
-	16,  23,  27,  31,  31,  27,  23,  16,
-	4,  12,  16,  23,  23,  16,  12,   4,
-	2,   8,  12,  12,  12,  12,   8,   2,
+int eg_queen_table[64] = {
+	 -9,  22,  22,  27,  27,  19,  10,  20,
+	-17,  20,  32,  41,  58,  25,  30,   0,
+	-20,   6,   9,  49,  47,  35,  19,   9,
+	  3,  22,  24,  45,  57,  40,  57,  36,
+	-18,  28,  19,  47,  31,  34,  39,  23,
+	-16, -27,  15,   6,   9,  17,  10,   5,
+	-22, -23, -30, -16, -16, -23, -36, -32,
+	-33, -28, -22, -43,  -5, -32, -20, -41,
 };
 
-const int KingMG[64] =
-{
-	40,  50,  30,  10,  10,  30,  50,  40,
-	30,  40,  20,   0,   0,  20,  40,  30,
-	10,  20,   0, -20, -20,   0,  20,  10,
-	0,  10, -10, -30, -30, -10,  10,   0,
-	-10,   0, -20, -40, -40, -20,   0, -10,
-	-20, -10, -30, -50, -50, -30, -10, -20,
-	-30, -20, -40, -60, -60, -40, -20, -30,
-	-40, -30, -50, -70, -70, -50, -30, -40
+int mg_king_table[64] = {
+	-65,  23,  16, -15, -56, -34,   2,  13,
+	 29,  -1, -20,  -7,  -8,  -4, -38, -29,
+	 -9,  24,   2, -16, -20,   6,  22, -22,
+	-17, -20, -12, -27, -30, -25, -14, -36,
+	-49,  -1, -27, -39, -46, -44, -33, -51,
+	-14, -14, -22, -46, -44, -30, -15, -27,
+	  1,   7,  -8, -64, -43, -16,   9,   8,
+	-15,  36,  12, -54,   8, -28,  24,  14,
 };
 
-const int KingEG[64] =
-{
-	-34, -30, -28, -27, -27, -28, -30, -34,
-	-17, -13, -11, -10, -10, -11, -13, -17,
-	-2,   2,   4,   5,   5,   4,   2,  -2,
-	11,  15,  17,  18,  18,  17,  15,  11,
-	22,  26,  28,  29,  29,  28,  26,  22,
-	31,  34,  37,  38,  38,  37,  34,  31,
-	38,  41,  44,  45,  45,  44,  41,  38,
-	42,  46,  48,  50,  50,  48,  46,  42,
+int eg_king_table[64] = {
+	-74, -35, -18, -18, -11,  15,   4, -17,
+	-12,  17,  14,  17,  17,  38,  23,  11,
+	 10,  17,  23,  15,  20,  45,  44,  13,
+	 -8,  22,  24,  27,  26,  33,  26,   3,
+	-18,  -4,  21,  24,  27,  23,   9, -11,
+	-19,  -3,  11,  21,  23,  16,   7,  -9,
+	-27, -11,   4,  13,  14,   4,  -5, -17,
+	-53, -34, -21, -11, -28, -14, -24, -43
 };
 
-#define MOVE(f,t,ca,pro,fl) ( (f) | ((t) << 7) | ( (ca) << 14 ) | ( (pro) << 20 ) | (fl))
-#define SQOFFBOARD(sq) (FilesBrd[(sq)]==OFFBOARD)
+int* mg_table[6] = {
+	mg_pawn_table,
+	mg_knight_table,
+	mg_bishop_table,
+	mg_rook_table,
+	mg_queen_table,
+	mg_king_table
+};
+
+int* eg_table[6] = {
+	eg_pawn_table,
+	eg_knight_table,
+	eg_bishop_table,
+	eg_rook_table,
+	eg_queen_table,
+	eg_king_table
+};
+
+int mg_pst[16][64];
+int eg_pst[16][64];
 
 const int LoopSlidePce[8] = {
  wB, wR, wQ, 0, bB, bR, bQ, 0
@@ -579,17 +547,28 @@ const int NumDir[13] = {
  0, 0, 8, 4, 4, 8, 8, 0, 8, 4, 4, 8, 8
 };
 
-const int VictimScore[13] = { 0, 100, 200, 300, 400, 500, 600, 100, 200, 300, 400, 500, 600 };
+const int VictimScore[13] = { 0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6 };
 static int MvvLvaScores[13][13];
+int mg_material[6] = { 82, 337, 365, 477, 1025,  0 };
+int eg_material[6] = { 94, 281, 297, 512,  936,  0 };
 
-void InitMvvLva() {
-	int Attacker;
-	int Victim;
-	for (Attacker = wP; Attacker <= bK; ++Attacker) {
-		for (Victim = wP; Victim <= bK; ++Victim) {
-			MvvLvaScores[Victim][Attacker] = VictimScore[Victim] + 6 - (VictimScore[Attacker] / 10);
+static void InitPst() {
+	for (int pt = PAWN; pt <= KING; pt++) {
+		for (int sq = 0; sq < 64; sq++) {
+			int mg = mg_material[pt] + mg_table[pt][sq];
+			int eg = eg_material[pt] + eg_table[pt][sq];
+			mg_pst[wP+pt][FLIP(sq)] = mg;
+			mg_pst[bP+pt][(sq)] = -mg;
+			eg_pst[wP+pt][FLIP(sq)] = eg;
+			eg_pst[bP+pt][(sq)] = -eg;
 		}
 	}
+}
+
+void InitMvvLva() {
+	for (int Attacker = wP; Attacker <= bK; ++Attacker)
+		for (int Victim = wP; Victim <= bK; ++Victim)
+			MvvLvaScores[Victim][Attacker] = VictimScore[Victim] * 10 - (VictimScore[Attacker]);
 }
 
 int MoveExists(Position* pos, const int move) {
@@ -715,7 +694,6 @@ void GenerateAllMoves(const Position* pos, S_MOVELIST* list) {
 
 		for (pceNum = 0; pceNum < pos->pceNum[wP]; ++pceNum) {
 			sq = pos->pList[wP][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			if (pos->pieces[sq + 10] == EMPTY) {
 				AddWhitePawnMove(pos, sq, sq + 10, list);
@@ -762,7 +740,6 @@ void GenerateAllMoves(const Position* pos, S_MOVELIST* list) {
 
 		for (pceNum = 0; pceNum < pos->pceNum[bP]; ++pceNum) {
 			sq = pos->pList[bP][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			if (pos->pieces[sq - 10] == EMPTY) {
 				AddBlackPawnMove(pos, sq, sq - 10, list);
@@ -840,11 +817,9 @@ void GenerateAllMoves(const Position* pos, S_MOVELIST* list) {
 	pce = LoopNonSlidePce[pceIndex++];
 
 	while (pce != 0) {
-		ASSERT(PieceValid(pce));
 
 		for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 			sq = pos->pList[pce][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			for (index = 0; index < NumDir[pce]; ++index) {
 				dir = PceDir[pce][index];
@@ -868,7 +843,6 @@ void GenerateAllMoves(const Position* pos, S_MOVELIST* list) {
 		pce = LoopNonSlidePce[pceIndex++];
 	}
 
-	ASSERT(MoveListOk(list, pos));
 }
 
 
@@ -888,7 +862,6 @@ void GenerateAllCaps(const Position* pos, S_MOVELIST* list) {
 
 		for (pceNum = 0; pceNum < pos->pceNum[wP]; ++pceNum) {
 			sq = pos->pList[wP][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			if (!SQOFFBOARD(sq + 9) && PieceCol[pos->pieces[sq + 9]] == BLACK) {
 				AddWhitePawnCapMove(pos, sq, sq + 9, pos->pieces[sq + 9], list);
@@ -912,7 +885,6 @@ void GenerateAllCaps(const Position* pos, S_MOVELIST* list) {
 
 		for (pceNum = 0; pceNum < pos->pceNum[bP]; ++pceNum) {
 			sq = pos->pList[bP][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			if (!SQOFFBOARD(sq - 9) && PieceCol[pos->pieces[sq - 9]] == WHITE) {
 				AddBlackPawnCapMove(pos, sq, sq - 9, pos->pieces[sq - 9], list);
@@ -936,11 +908,9 @@ void GenerateAllCaps(const Position* pos, S_MOVELIST* list) {
 	pceIndex = LoopSlideIndex[side];
 	pce = LoopSlidePce[pceIndex++];
 	while (pce != 0) {
-		ASSERT(PieceValid(pce));
 
 		for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 			sq = pos->pList[pce][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			for (index = 0; index < NumDir[pce]; ++index) {
 				dir = PceDir[pce][index];
@@ -967,11 +937,9 @@ void GenerateAllCaps(const Position* pos, S_MOVELIST* list) {
 	pce = LoopNonSlidePce[pceIndex++];
 
 	while (pce != 0) {
-		ASSERT(PieceValid(pce));
 
 		for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 			sq = pos->pList[pce][pceNum];
-			ASSERT(SqOnBoard(sq));
 
 			for (index = 0; index < NumDir[pce]; ++index) {
 				dir = PceDir[pce][index];
@@ -993,69 +961,59 @@ void GenerateAllCaps(const Position* pos, S_MOVELIST* list) {
 
 		pce = LoopNonSlidePce[pceIndex++];
 	}
-	ASSERT(MoveListOk(list, pos));
 }
 
-static int MaterialDraw(const Position* pos) {
+static inline int InsufficientMaterial(const Position* pos, int piece) {
+	return pos->pceNum[piece] * insufficientMaterial[piece];
+};
 
-	if (!pos->pceNum[wR] && !pos->pceNum[bR] && !pos->pceNum[wQ] && !pos->pceNum[bQ]) {
-		if (!pos->pceNum[bB] && !pos->pceNum[wB]) {
-			if (pos->pceNum[wN] < 3 && pos->pceNum[bN] < 3) { return TRUE; }
-		}
-		else if (!pos->pceNum[wN] && !pos->pceNum[bN]) {
-			if (abs(pos->pceNum[wB] - pos->pceNum[bB]) < 2) { return TRUE; }
-		}
-		else if ((pos->pceNum[wN] < 3 && !pos->pceNum[wB]) || (pos->pceNum[wB] == 1 && !pos->pceNum[wN])) {
-			if ((pos->pceNum[bN] < 3 && !pos->pceNum[bB]) || (pos->pceNum[bB] == 1 && !pos->pceNum[bN])) { return TRUE; }
-		}
-	}
-	else if (!pos->pceNum[wQ] && !pos->pceNum[bQ]) {
-		if (pos->pceNum[wR] == 1 && pos->pceNum[bR] == 1) {
-			if ((pos->pceNum[wN] + pos->pceNum[wB]) < 2 && (pos->pceNum[bN] + pos->pceNum[bB]) < 2) { return TRUE; }
-		}
-		else if (pos->pceNum[wR] == 1 && !pos->pceNum[bR]) {
-			if ((pos->pceNum[wN] + pos->pceNum[wB] == 0) && (((pos->pceNum[bN] + pos->pceNum[bB]) == 1) || ((pos->pceNum[bN] + pos->pceNum[bB]) == 2))) { return TRUE; }
-		}
-		else if (pos->pceNum[bR] == 1 && !pos->pceNum[wR]) {
-			if ((pos->pceNum[bN] + pos->pceNum[bB] == 0) && (((pos->pceNum[wN] + pos->pceNum[wB]) == 1) || ((pos->pceNum[wN] + pos->pceNum[wB]) == 2))) { return TRUE; }
-		}
-	}
-	return FALSE;
+static inline int MaterialMg(const Position* pos, int piece) {
+	return pos->pceNum[piece] * materialMg[piece];
+};
+
+static inline int MaterialEg(const Position* pos, int piece) {
+	return pos->pceNum[piece] * materialEg[piece];
+};
+
+static int MaterialDraw(const Position* pos) {
+	int insufficientW = InsufficientMaterial(pos, wP) + InsufficientMaterial(pos, wN) + InsufficientMaterial(pos, wB) + InsufficientMaterial(pos, wR) + InsufficientMaterial(pos, wQ);
+	int insufficientB = InsufficientMaterial(pos, bP) + InsufficientMaterial(pos, bN) + InsufficientMaterial(pos, bB) + InsufficientMaterial(pos, bR) + InsufficientMaterial(pos, bQ);
+	return max(insufficientW, insufficientB) < 3;
+}
+
+static int ScoreMg(const Position* pos) {
+	return MaterialMg(pos, wP) + MaterialMg(pos, wN) + MaterialMg(pos, wB) + MaterialMg(pos, wR) + MaterialMg(pos, wQ)
+		- MaterialMg(pos, bP) - MaterialMg(pos, bN) - MaterialMg(pos, bB) - MaterialMg(pos, bR) - MaterialMg(pos, bQ);
+}
+
+static int ScoreEg(const Position* pos) {
+	return MaterialEg(pos, wP) + MaterialEg(pos, wN) + MaterialEg(pos, wB) + MaterialEg(pos, wR) + MaterialEg(pos, wQ)
+		- MaterialEg(pos, bP) - MaterialEg(pos, bN) - MaterialEg(pos, bB) - MaterialEg(pos, bR) - MaterialEg(pos, bQ);
 }
 
 int EvalPosition(Position* pos) {
-
-	// test for drawn position before doing anything
-	if (!pos->pceNum[wP] && !pos->pceNum[bP] && MaterialDraw(pos) == TRUE) {
+	if (MaterialDraw(pos))
 		return 0;
-	}
-
 	int pce;
 	int pceNum;
 	int sq;
-	int phase = totalPhase;
-	int scoreMG, scoreEG;
-	scoreMG = scoreEG = pos->material[WHITE] - pos->material[BLACK];
+	int phase = 0;
+	int scoreMG = 0;
+	int scoreEG = 0;
 	int score;
 
 	pce = wP;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
-
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
-
-		scoreMG += PawnMG[SQ64(sq)];
-		scoreEG += PawnEG[SQ64(sq)];
+		scoreMG += mg_pst[wP][SQ64(sq)];
+		scoreEG += eg_pst[wP][SQ64(sq)];
 
 		if ((IsolatedMask[SQ64(sq)] & pos->pawns[WHITE]) == 0) {
-			//printf("wP Iso:%s\n",PrSq(sq));
 			scoreMG += PawnIsolated;
 			scoreEG += PawnIsolated;
 		}
 
 		if ((WhitePassedMask[SQ64(sq)] & pos->pawns[BLACK]) == 0) {
-			//printf("wP Passed:%s\n",PrSq(sq));
 			scoreMG += PawnPassedMG[RanksBrd[sq]];
 			scoreEG += PawnPassedEG[RanksBrd[sq]];
 		}
@@ -1066,20 +1024,16 @@ int EvalPosition(Position* pos) {
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq)) >= 0 && MIRROR64(SQ64(sq)) <= 63);
 
-		scoreMG -= PawnMG[MIRROR64(SQ64(sq))];
-		scoreEG -= PawnEG[MIRROR64(SQ64(sq))];
+		scoreMG += mg_pst[bP][SQ64(sq)];
+		scoreEG += eg_pst[bP][SQ64(sq)];
 
 		if ((IsolatedMask[SQ64(sq)] & pos->pawns[BLACK]) == 0) {
-			//printf("bP Iso:%s\n",PrSq(sq));
 			scoreMG -= PawnIsolated;
 			scoreEG -= PawnIsolated;
 		}
 
 		if ((BlackPassedMask[SQ64(sq)] & pos->pawns[WHITE]) == 0) {
-			//printf("bP Passed:%s\n",PrSq(sq));
 			scoreMG -= PawnPassedMG[7 - RanksBrd[sq]];
 			scoreEG -= PawnPassedEG[7 - RanksBrd[sq]];
 		}
@@ -1089,60 +1043,49 @@ int EvalPosition(Position* pos) {
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
 
-		scoreMG += KnightMG[SQ64(sq)];
-		scoreEG += KnightEG[SQ64(sq)];
-		phase -= minorPhase;
+		scoreMG += mg_pst[wN][SQ64(sq)];
+		scoreEG += eg_pst[wN][SQ64(sq)];
+		phase += minorPhase;
 	}
 
 	pce = bN;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq)) >= 0 && MIRROR64(SQ64(sq)) <= 63);
 
-		scoreMG -= KnightMG[MIRROR64(SQ64(sq))];
-		scoreEG -= KnightEG[MIRROR64(SQ64(sq))];
-		phase -= minorPhase;
+		scoreMG += mg_pst[bN][SQ64(sq)];
+		scoreEG += eg_pst[bN][SQ64(sq)];
+		phase += minorPhase;
 	}
 
 	pce = wB;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
 
-		scoreMG += BishopMG[SQ64(sq)];
-		scoreEG += BishopEG[SQ64(sq)];
-		phase -= minorPhase;
+		scoreMG += mg_pst[wB][SQ64(sq)];
+		scoreEG += eg_pst[wB][SQ64(sq)];
+		phase += minorPhase;
 	}
 
 	pce = bB;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq)) >= 0 && MIRROR64(SQ64(sq)) <= 63);
 
-		scoreMG -= BishopMG[MIRROR64(SQ64(sq))];
-		scoreEG -= BishopEG[MIRROR64(SQ64(sq))];
-		phase -= minorPhase;
+		scoreMG += mg_pst[bB][SQ64(sq)];
+		scoreEG += eg_pst[bB][SQ64(sq)];
+		phase += minorPhase;
 	}
 
 	pce = wR;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
 
-		scoreMG += RookMG[SQ64(sq)];
-		scoreEG += RookEG[SQ64(sq)];
+		scoreMG += mg_pst[wR][SQ64(sq)];
+		scoreEG += eg_pst[wR][SQ64(sq)];
 
 		if (!(pos->pawns[BOTH] & FileBBMask[FilesBrd[sq]])) {
 			scoreMG += RookOpenFile;
@@ -1152,19 +1095,16 @@ int EvalPosition(Position* pos) {
 			scoreMG += RookSemiOpenFile;
 			scoreEG += RookSemiOpenFile;
 		}
-		phase -= rookPhase;
+		phase += rookPhase;
 	}
 
 	pce = bR;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(MIRROR64(SQ64(sq)) >= 0 && MIRROR64(SQ64(sq)) <= 63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
 
-		scoreMG -= RookMG[MIRROR64(SQ64(sq))];
-		scoreEG -= RookEG[MIRROR64(SQ64(sq))];
+		scoreMG += mg_pst[bR][SQ64(sq)];
+		scoreEG += eg_pst[bR][SQ64(sq)];
 
 		if (!(pos->pawns[BOTH] & FileBBMask[FilesBrd[sq]])) {
 			scoreMG -= RookOpenFile;
@@ -1174,19 +1114,16 @@ int EvalPosition(Position* pos) {
 			scoreMG -= RookSemiOpenFile;
 			scoreEG -= RookSemiOpenFile;
 		}
-		phase -= rookPhase;
+		phase += rookPhase;
 	}
 
 	pce = wQ;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
 
-		scoreMG += QueenMG[SQ64(sq)];
-		scoreEG += QueenEG[SQ64(sq)];
+		scoreMG += mg_pst[wQ][SQ64(sq)];
+		scoreEG += eg_pst[wQ][SQ64(sq)];
 
 		if (!(pos->pawns[BOTH] & FileBBMask[FilesBrd[sq]])) {
 			scoreMG += QueenOpenFile;
@@ -1196,19 +1133,16 @@ int EvalPosition(Position* pos) {
 			scoreMG += QueenSemiOpenFile;
 			scoreEG += QueenSemiOpenFile;
 		}
-		phase -= queenPhase;
+		phase += queenPhase;
 	}
 
 	pce = bQ;
 	for (pceNum = 0; pceNum < pos->pceNum[pce]; ++pceNum) {
 		sq = pos->pList[pce][pceNum];
 
-		ASSERT(SqOnBoard(sq));
-		ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
-		ASSERT(FileRankValid(FilesBrd[sq]));
 
-		scoreMG -= QueenMG[MIRROR64(SQ64(sq))];
-		scoreEG -= QueenEG[MIRROR64(SQ64(sq))];
+		scoreMG += mg_pst[bQ][SQ64(sq)];
+		scoreEG += eg_pst[bQ][SQ64(sq)];
 
 		if (!(pos->pawns[BOTH] & FileBBMask[FilesBrd[sq]])) {
 			scoreMG -= QueenOpenFile;
@@ -1218,23 +1152,19 @@ int EvalPosition(Position* pos) {
 			scoreMG -= QueenSemiOpenFile;
 			scoreEG -= QueenSemiOpenFile;
 		}
-		phase -= queenPhase;
+		phase += queenPhase;
 	}
 	pce = wK;
 	sq = pos->pList[pce][0];
-	ASSERT(SqOnBoard(sq));
-	ASSERT(SQ64(sq) >= 0 && SQ64(sq) <= 63);
 
-	scoreMG += KingMG[SQ64(sq)];
-	scoreEG += KingEG[SQ64(sq)];
+	scoreMG += mg_pst[wK][SQ64(sq)];
+	scoreEG += eg_pst[wK][SQ64(sq)];
 
 	pce = bK;
 	sq = pos->pList[pce][0];
-	ASSERT(SqOnBoard(sq));
-	ASSERT(MIRROR64(SQ64(sq)) >= 0 && MIRROR64(SQ64(sq)) <= 63);
 
-	scoreMG -= KingMG[MIRROR64(SQ64(sq))];
-	scoreEG -= KingEG[MIRROR64(SQ64(sq))];
+	scoreMG += mg_pst[bK][SQ64(sq)];
+	scoreEG += eg_pst[bK][SQ64(sq)];
 
 	if (pos->pceNum[wB] >= 2) {
 		scoreMG += BishopPairMG;
@@ -1244,13 +1174,9 @@ int EvalPosition(Position* pos) {
 		scoreMG -= BishopPairMG;
 		scoreEG -= BishopPairEG;
 	}
-
-	// calculating game phase and interpolating score values between phases
-	phase = (phase * 256 + (totalPhase / 2)) / totalPhase;
-	score = ((scoreMG * (256 - phase)) + (scoreEG * phase)) / 256;
-
+	phase = min(24, totalPhase);
+	score = ((scoreMG * phase) + (scoreEG * (24 - phase))) / 24;
 	return pos->side == WHITE ? score : -score;
-
 }
 
 
@@ -1282,9 +1208,6 @@ static void PickNextMove(int moveNum, S_MOVELIST* list) {
 		}
 	}
 
-	ASSERT(moveNum >= 0 && moveNum < list->count);
-	ASSERT(bestNum >= 0 && bestNum < list->count);
-	ASSERT(bestNum >= moveNum);
 
 	temp = list->moves[moveNum];
 	list->moves[moveNum] = list->moves[bestNum];
@@ -1296,7 +1219,6 @@ static int IsRepetition(const Position* pos) {
 	int index = 0;
 
 	for (index = pos->hisPly - pos->fiftyMove; index < pos->hisPly - 1; ++index) {
-		ASSERT(index >= 0 && index < MAXGAMEMOVES);
 		if (pos->posKey == pos->history[index].posKey) {
 			return TRUE;
 		}
@@ -1321,9 +1243,9 @@ static void ClearForSearch(Position* pos, SearchInfo* info) {
 		}
 	}
 
-	pos->HashTable.overWrite = 0;
-	pos->HashTable.hit = 0;
-	pos->HashTable.cut = 0;
+	pos->hashTable.overWrite = 0;
+	pos->hashTable.hit = 0;
+	pos->hashTable.cut = 0;
 	pos->ply = 0;
 
 	info->stop = 0;
@@ -1338,7 +1260,7 @@ static void PrintInfo(Position* pos, SearchInfo* info, int bestScore, int depth)
 	else
 		printf("info score cp %d depth %d nodes %llu time %llu ", bestScore, depth, info->nodes, GetTimeMs() - info->timeStart);
 	int pvMoves = GetPvLine(depth, pos);
-	printf("hashfull %d pv", Permill(&pos->HashTable));
+	printf("hashfull %d pv", Permill(&pos->hashTable));
 	for (int pvNum = 0; pvNum < pvMoves; ++pvNum)
 		printf(" %s", MoveToUci(pos->PvArray[pvNum]));
 	printf("\n");
@@ -1367,7 +1289,6 @@ static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info
 
 	int Score = EvalPosition(pos);
 
-	ASSERT(Score > -INFINITE && Score < INFINITE);
 
 	if (Score >= beta) {
 		return beta;
@@ -1406,8 +1327,6 @@ static int SearchQuiescence(int alpha, int beta, Position* pos, SearchInfo* info
 			alpha = Score;
 		}
 	}
-
-	ASSERT(alpha >= OldAlpha);
 
 	return alpha;
 }
@@ -1449,7 +1368,7 @@ static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo
 	int PvMove = NOMOVE;
 
 	if (ProbeHashEntry(pos, &PvMove, &Score, alpha, beta, depth) == TRUE) {
-		pos->HashTable.cut++;
+		pos->hashTable.cut++;
 		return Score;
 	}
 
@@ -1601,7 +1520,6 @@ static int SearchAlpha(int alpha, int beta, int depth, Position* pos, SearchInfo
 		}
 	}
 
-	ASSERT(alpha >= OldAlpha);
 
 	if (alpha != OldAlpha) {
 		StoreHashEntry(pos, BestMove, BestScore, HFEXACT, depth);
@@ -1631,18 +1549,15 @@ static void ClearPiece(const int sq, Position* pos) {
 
 	int pce = pos->pieces[sq];
 
-	ASSERT(PieceValid(pce));
 
 	int col = PieceCol[pce];
 	int index = 0;
 	int t_pceNum = -1;
 
-	ASSERT(SideValid(col));
 
 	HASH_PCE(pce, sq);
 
 	pos->pieces[sq] = EMPTY;
-	pos->material[col] -= PieceVal[pce];
 
 	if (PieceBig[pce]) {
 		pos->bigPce[col]--;
@@ -1665,8 +1580,6 @@ static void ClearPiece(const int sq, Position* pos) {
 		}
 	}
 
-	ASSERT(t_pceNum != -1);
-	ASSERT(t_pceNum >= 0 && t_pceNum < 10);
 
 	pos->pceNum[pce]--;
 
@@ -1677,11 +1590,8 @@ static void ClearPiece(const int sq, Position* pos) {
 
 static void AddPiece(const int sq, Position* pos, const int pce) {
 
-	ASSERT(PieceValid(pce));
-	ASSERT(SqOnBoard(sq));
 
 	int col = PieceCol[pce];
-	ASSERT(SideValid(col));
 
 	HASH_PCE(pce, sq);
 
@@ -1701,21 +1611,16 @@ static void AddPiece(const int sq, Position* pos, const int pce) {
 		SETBIT(pos->pawns[BOTH], SQ64(sq));
 	}
 
-	pos->material[col] += PieceVal[pce];
 	pos->pList[pce][pos->pceNum[pce]++] = sq;
 
 }
 
 static void MovePiece(const int from, const int to, Position* pos) {
 
-	ASSERT(SqOnBoard(from));
-	ASSERT(SqOnBoard(to));
 
 	int index = 0;
 	int pce = pos->pieces[from];
 	int col = PieceCol[pce];
-	ASSERT(SideValid(col));
-	ASSERT(PieceValid(pce));
 
 #ifdef DEBUG
 	int t_PieceNum = FALSE;
@@ -1743,7 +1648,6 @@ static void MovePiece(const int from, const int to, Position* pos) {
 			break;
 		}
 	}
-	ASSERT(t_PieceNum);
 }
 
 int MakeMove(Position* pos, int move) {
@@ -1751,13 +1655,6 @@ int MakeMove(Position* pos, int move) {
 	int from = FROMSQ(move);
 	int to = TOSQ(move);
 	int side = pos->side;
-
-	ASSERT(SqOnBoard(from));
-	ASSERT(SqOnBoard(to));
-	ASSERT(SideValid(side));
-	ASSERT(PieceValid(pos->pieces[from]));
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
 
 	pos->history[pos->hisPly].posKey = pos->posKey;
 
@@ -1783,7 +1680,6 @@ int MakeMove(Position* pos, int move) {
 		case G8:
 			MovePiece(H8, F8, pos);
 			break;
-		default: ASSERT(FALSE); break;
 		}
 	}
 
@@ -1805,7 +1701,6 @@ int MakeMove(Position* pos, int move) {
 	pos->fiftyMove++;
 
 	if (captured != EMPTY) {
-		ASSERT(PieceValid(captured));
 		ClearPiece(to, pos);
 		pos->fiftyMove = 0;
 	}
@@ -1813,19 +1708,15 @@ int MakeMove(Position* pos, int move) {
 	pos->hisPly++;
 	pos->ply++;
 
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
 
 	if (PiecePawn[pos->pieces[from]]) {
 		pos->fiftyMove = 0;
 		if (move & MFLAGPS) {
 			if (side == WHITE) {
 				pos->enPas = from + 10;
-				ASSERT(RanksBrd[pos->enPas] == RANK_3);
 			}
 			else {
 				pos->enPas = from - 10;
-				ASSERT(RanksBrd[pos->enPas] == RANK_6);
 			}
 			HASH_EP;
 		}
@@ -1835,7 +1726,6 @@ int MakeMove(Position* pos, int move) {
 
 	int prPce = PROMOTED(move);
 	if (prPce != EMPTY) {
-		ASSERT(PieceValid(prPce) && !PiecePawn[prPce]);
 		ClearPiece(to, pos);
 		AddPiece(to, pos, prPce);
 	}
@@ -1864,15 +1754,11 @@ void TakeMove(Position* pos) {
 	pos->hisPly--;
 	pos->ply--;
 
-	ASSERT(pos->hisPly >= 0 && pos->hisPly < MAXGAMEMOVES);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
 
 	int move = pos->history[pos->hisPly].move;
 	int from = FROMSQ(move);
 	int to = TOSQ(move);
 
-	ASSERT(SqOnBoard(from));
-	ASSERT(SqOnBoard(to));
 
 	if (pos->enPas != NO_SQ) HASH_EP;
 	HASH_CA;
@@ -1901,7 +1787,6 @@ void TakeMove(Position* pos) {
 		case C8: MovePiece(D8, A8, pos); break;
 		case G1: MovePiece(F1, H1, pos); break;
 		case G8: MovePiece(F8, H8, pos); break;
-		default: ASSERT(FALSE); break;
 		}
 	}
 
@@ -1913,12 +1798,10 @@ void TakeMove(Position* pos) {
 
 	int captured = CAPTURED(move);
 	if (captured != EMPTY) {
-		ASSERT(PieceValid(captured));
 		AddPiece(to, pos, captured);
 	}
 
 	if (PROMOTED(move) != EMPTY) {
-		ASSERT(PieceValid(PROMOTED(move)) && !PiecePawn[PROMOTED(move)]);
 		ClearPiece(from, pos);
 		AddPiece(from, pos, (PieceCol[PROMOTED(move)] == WHITE ? wP : bP));
 	}
@@ -1984,7 +1867,6 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 	// knights
 	for (index = 0; index < 8; ++index) {
 		pce = pos->pieces[sq + KnDir[index]];
-		ASSERT(PceValidEmptyOffbrd(pce));
 		if (pce != OFFBOARD && IsKn(pce) && PieceCol[pce] == side) {
 			return TRUE;
 		}
@@ -1994,9 +1876,7 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 	for (index = 0; index < 4; ++index) {
 		dir = RkDir[index];
 		t_sq = sq + dir;
-		ASSERT(SqIs120(t_sq));
 		pce = pos->pieces[t_sq];
-		ASSERT(PceValidEmptyOffbrd(pce));
 		while (pce != OFFBOARD) {
 			if (pce != EMPTY) {
 				if (IsRQ(pce) && PieceCol[pce] == side) {
@@ -2005,7 +1885,6 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 				break;
 			}
 			t_sq += dir;
-			ASSERT(SqIs120(t_sq));
 			pce = pos->pieces[t_sq];
 		}
 	}
@@ -2014,9 +1893,7 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 	for (index = 0; index < 4; ++index) {
 		dir = BiDir[index];
 		t_sq = sq + dir;
-		ASSERT(SqIs120(t_sq));
 		pce = pos->pieces[t_sq];
-		ASSERT(PceValidEmptyOffbrd(pce));
 		while (pce != OFFBOARD) {
 			if (pce != EMPTY) {
 				if (IsBQ(pce) && PieceCol[pce] == side) {
@@ -2025,7 +1902,6 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 				break;
 			}
 			t_sq += dir;
-			ASSERT(SqIs120(t_sq));
 			pce = pos->pieces[t_sq];
 		}
 	}
@@ -2033,7 +1909,6 @@ int SqAttacked(const int sq, const int side, const Position* pos) {
 	// kings
 	for (index = 0; index < 8; ++index) {
 		pce = pos->pieces[sq + KiDir[index]];
-		ASSERT(PceValidEmptyOffbrd(pce));
 		if (pce != OFFBOARD && IsKi(pce) && PieceCol[pce] == side) {
 			return TRUE;
 		}
@@ -2151,15 +2026,8 @@ void InitHashKeys() {
 }
 
 void InitBitMasks() {
-	int index = 0;
-
-	for (index = 0; index < 64; index++) {
-		SetMask[index] = 0ULL;
-		ClearMask[index] = 0ULL;
-	}
-
-	for (index = 0; index < 64; index++) {
-		SetMask[index] |= (1ULL << index);
+	for (int index = 0; index < 64; index++) {
+		SetMask[index] = 1ULL << index;
 		ClearMask[index] = ~SetMask[index];
 	}
 }
@@ -2230,18 +2098,13 @@ void UpdateListsMaterial(Position* pos) {
 	for (index = 0; index < BRD_SQ_NUM; ++index) {
 		sq = index;
 		piece = pos->pieces[index];
-		ASSERT(PceValidEmptyOffbrd(piece));
 		if (piece != OFFBOARD && piece != EMPTY) {
 			colour = PieceCol[piece];
-			ASSERT(SideValid(colour));
 
 			if (PieceBig[piece] == TRUE) pos->bigPce[colour]++;
 			if (PieceMin[piece] == TRUE) pos->minPce[colour]++;
 			if (PieceMaj[piece] == TRUE) pos->majPce[colour]++;
 
-			pos->material[colour] += PieceVal[piece];
-
-			ASSERT(pos->pceNum[piece] < 10 && pos->pceNum[piece] >= 0);
 
 			pos->pList[piece][pos->pceNum[piece]] = sq;
 			pos->pceNum[piece]++;
@@ -2264,8 +2127,6 @@ void UpdateListsMaterial(Position* pos) {
 
 int SetFen(char* fen, Position* pos) {
 
-	ASSERT(fen != NULL);
-	ASSERT(pos != NULL);
 
 	int  rank = RANK_8;
 	int  file = FILE_A;
@@ -2328,7 +2189,6 @@ int SetFen(char* fen, Position* pos) {
 		fen++;
 	}
 
-	ASSERT(*fen == 'w' || *fen == 'b');
 
 	pos->side = (*fen == 'w') ? WHITE : BLACK;
 	fen += 2;
@@ -2348,14 +2208,11 @@ int SetFen(char* fen, Position* pos) {
 	}
 	fen++;
 
-	ASSERT(pos->castlePerm >= 0 && pos->castlePerm <= 15);
 
 	if (*fen != '-') {
 		file = fen[0] - 'a';
 		rank = fen[1] - '1';
 
-		ASSERT(file >= FILE_A && file <= FILE_H);
-		ASSERT(rank >= RANK_1 && rank <= RANK_8);
 
 		pos->enPas = FR2SQ(file, rank);
 	}
@@ -2383,7 +2240,6 @@ void ResetBoard(Position* pos) {
 		pos->bigPce[index] = 0;
 		pos->majPce[index] = 0;
 		pos->minPce[index] = 0;
-		pos->material[index] = 0;
 	}
 
 	for (index = 0; index < 3; ++index) {
@@ -2448,7 +2304,6 @@ U64 GeneratePosKey(const Position* pos) {
 	for (sq = 0; sq < BRD_SQ_NUM; ++sq) {
 		piece = pos->pieces[sq];
 		if (piece != NO_SQ && piece != EMPTY && piece != OFFBOARD) {
-			ASSERT(piece >= wP && piece <= bK);
 			finalKey ^= PieceKeys[piece][sq];
 		}
 	}
@@ -2458,13 +2313,9 @@ U64 GeneratePosKey(const Position* pos) {
 	}
 
 	if (pos->enPas != NO_SQ) {
-		ASSERT(pos->enPas >= 0 && pos->enPas < BRD_SQ_NUM);
-		ASSERT(SqOnBoard(pos->enPas));
-		ASSERT(RanksBrd[pos->enPas] == RANK_3 || RanksBrd[pos->enPas] == RANK_6);
 		finalKey ^= PieceKeys[EMPTY][pos->enPas];
 	}
 
-	ASSERT(pos->castlePerm >= 0 && pos->castlePerm <= 15);
 
 	finalKey ^= CastleKeys[pos->castlePerm];
 
@@ -2535,7 +2386,6 @@ int ParseMove(char* ptrChar, Position* pos) {
 	int from = FR2SQ(ptrChar[0] - 'a', ptrChar[1] - '1');
 	int to = FR2SQ(ptrChar[2] - 'a', ptrChar[3] - '1');
 
-	ASSERT(SqOnBoard(from) && SqOnBoard(to));
 
 	S_MOVELIST list[1];
 	GenerateAllMoves(pos, list);
@@ -2587,14 +2437,12 @@ void PrintMoveList(const S_MOVELIST* list) {
 
 int GetPvLine(const int depth, Position* pos) {
 
-	ASSERT(depth < MAX_PLY && depth >= 1);
 
 	int move = ProbePvMove(pos);
 	int count = 0;
 
 	while (move != NOMOVE && count < depth) {
 
-		ASSERT(count < MAX_PLY);
 
 		if (MoveExists(pos, move)) {
 			MakeMove(pos, move);
@@ -2663,30 +2511,20 @@ void InitHashTable(S_HASHTABLE* table, const int MB) {
 
 int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, int depth) {
 
-	int index = pos->posKey % pos->HashTable.numEntries;
+	int index = pos->posKey % pos->hashTable.numEntries;
 
-	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
-	ASSERT(depth >= 1 && depth < MAX_PLY);
-	ASSERT(alpha < beta);
-	ASSERT(alpha >= -INFINITE && alpha <= INFINITE);
-	ASSERT(beta >= -INFINITE && beta <= INFINITE);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
+	if (pos->hashTable.pTable[index].posKey == pos->posKey) {
+		*move = pos->hashTable.pTable[index].move;
+		if (pos->hashTable.pTable[index].depth >= depth) {
+			pos->hashTable.hit++;
 
-	if (pos->HashTable.pTable[index].posKey == pos->posKey) {
-		*move = pos->HashTable.pTable[index].move;
-		if (pos->HashTable.pTable[index].depth >= depth) {
-			pos->HashTable.hit++;
 
-			ASSERT(pos->HashTable->pTable[index].depth >= 1 && pos->HashTable->pTable[index].depth < MAX_PLY);
-			ASSERT(pos->HashTable->pTable[index].flags >= HFALPHA && pos->HashTable->pTable[index].flags <= HFEXACT);
-
-			*score = pos->HashTable.pTable[index].score;
+			*score = pos->hashTable.pTable[index].score;
 			if (*score > ISMATE) *score -= pos->ply;
 			else if (*score < -ISMATE) *score += pos->ply;
 
-			switch (pos->HashTable.pTable[index].flags) {
+			switch (pos->hashTable.pTable[index].flags) {
 
-				ASSERT(*score >= -INFINITE && *score <= INFINITE);
 
 			case HFALPHA: if (*score <= alpha) {
 				*score = alpha;
@@ -2701,7 +2539,6 @@ int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, in
 			case HFEXACT:
 				return TRUE;
 				break;
-			default: ASSERT(FALSE); break;
 			}
 		}
 	}
@@ -2711,38 +2548,31 @@ int ProbeHashEntry(Position* pos, int* move, int* score, int alpha, int beta, in
 
 void StoreHashEntry(Position* pos, const int move, int score, const int flags, const int depth) {
 
-	int index = pos->posKey % pos->HashTable.numEntries;
+	int index = pos->posKey % pos->hashTable.numEntries;
 
-	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
-	ASSERT(depth >= 1 && depth < MAX_PLY);
-	ASSERT(flags >= HFALPHA && flags <= HFEXACT);
-	ASSERT(score >= -INFINITE && score <= INFINITE);
-	ASSERT(pos->ply >= 0 && pos->ply < MAX_PLY);
-
-	if (pos->HashTable.pTable[index].posKey == 0) {
-		pos->HashTable.newWrite++;
+	if (pos->hashTable.pTable[index].posKey == 0) {
+		pos->hashTable.newWrite++;
 	}
 	else {
-		pos->HashTable.overWrite++;
+		pos->hashTable.overWrite++;
 	}
 
 	if (score > ISMATE) score += pos->ply;
 	else if (score < -ISMATE) score -= pos->ply;
 
-	pos->HashTable.pTable[index].move = move;
-	pos->HashTable.pTable[index].posKey = pos->posKey;
-	pos->HashTable.pTable[index].flags = flags;
-	pos->HashTable.pTable[index].score = score;
-	pos->HashTable.pTable[index].depth = depth;
+	pos->hashTable.pTable[index].move = move;
+	pos->hashTable.pTable[index].posKey = pos->posKey;
+	pos->hashTable.pTable[index].flags = flags;
+	pos->hashTable.pTable[index].score = score;
+	pos->hashTable.pTable[index].depth = depth;
 }
 
 int ProbePvMove(const Position* pos) {
 
-	int index = pos->posKey % pos->HashTable.numEntries;
-	ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+	int index = pos->posKey % pos->hashTable.numEntries;
 
-	if (pos->HashTable.pTable[index].posKey == pos->posKey) {
-		return pos->HashTable.pTable[index].move;
+	if (pos->hashTable.pTable[index].posKey == pos->posKey) {
+		return pos->hashTable.pTable[index].move;
 	}
 
 	return NOMOVE;
@@ -2912,10 +2742,8 @@ static void ParseGo(char* command, SearchInfo* info, Position* pos) {
 }
 
 static void ParsePosition(char* lineIn, Position* pos) {
-
 	lineIn += 9;
 	char* ptrChar = lineIn;
-
 	if (strncmp(lineIn, "startpos", 8) == 0) {
 		SetFen(START_FEN, pos);
 	}
@@ -2952,7 +2780,7 @@ void UciCommand(Position* pos, SearchInfo* info, char* line) {
 	else if (!strncmp(line, "position", 8))
 		ParsePosition(line, pos);
 	else if (!strncmp(line, "ucinewgame", 10))
-		ParsePosition("position startpos\n", pos);
+		ClearHashTable(&pos->hashTable);
 	else if (!strncmp(line, "go", 2))
 		ParseGo(line, info, pos);
 	else if (!strncmp(line, "quit", 4))
@@ -2974,7 +2802,7 @@ void UciCommand(Position* pos, SearchInfo* info, char* line) {
 		if (MB < HASH_MIN) MB = HASH_MIN;
 		if (MB > HASH_MAX) MB = HASH_MAX;
 		printf("Set Hash to %d MB\n", MB);
-		InitHashTable(&pos->HashTable, MB);
+		InitHashTable(&pos->hashTable, MB);
 	}
 }
 
@@ -2988,6 +2816,7 @@ int main() {
 	setbuf(stdin, NULL);
 	setbuf(stdout, NULL);
 	printf("%s %s\n", NAME, VERSION);
+	InitPst();
 	InitSq120To64();
 	InitBitMasks();
 	InitHashKeys();
@@ -2995,10 +2824,10 @@ int main() {
 	InitEvalMasks();
 	InitMvvLva();
 	InitSearch();
-	pos.HashTable.pTable = NULL;
-	InitHashTable(&pos.HashTable, HASH_DEF);
+	pos.hashTable.pTable = NULL;
+	InitHashTable(&pos.hashTable, HASH_DEF);
 	SetFen(START_FEN, &pos);
 	UciLoop(&pos, &info);
-	free(pos.HashTable.pTable);
+	free(pos.hashTable.pTable);
 	return 0;
 }
