@@ -20,6 +20,8 @@ FIDE-rules-compliant chess engine
 
 ## Features
 
+- Single C file
+- Protocol UCI
 - Board: 10x12
 - En passant
 - Underpromotions (knight, bishop, rook)
