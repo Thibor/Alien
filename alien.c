@@ -552,13 +552,10 @@ static U64 GetHash(const Position* pos) {
 
 static void SetFen(Position* pos, char* fen) {
 	memset(pos, 0, sizeof(Position));
-	int i = 0;
-	int z = 0;
 	int sq = 56;
-	int n = (int)strlen(fen);
-	for (i = 0; i < n && !z; ++i) {
+	while (*fen && *fen != ' ') {
 		U64 bb = 1ull << sq;
-		switch (fen[i]) {
+		switch (*fen) {
 		case '1': sq += 1; break;
 		case '2': sq += 2; break;
 		case '3': sq += 3; break;
@@ -580,25 +577,25 @@ static void SetFen(Position* pos, char* fen) {
 		case 'q': pos->color[1] |= bb; pos->pieces[QUEEN] |= bb; ++sq; break;
 		case 'k': pos->color[1] |= bb; pos->pieces[KING] |= bb; ++sq; break;
 		case '/': sq -= 16; break;
-		default: z = 1; break;
 		}
+		fen++;
 	}
-	int flipped = fen[i++] == 'w' ? 0 : 1;
-	i++;
-	for (z = 0; i < n && !z; ++i) {
-		switch (fen[i]) {
+	fen++;
+	int flipped = *fen == 'b';
+	while (*fen && *fen != ' ') fen++; fen++;
+	while (*fen && *fen != ' ') {
+		switch (*fen) {
 		case 'K': pos->castling[0] = 1; break;
 		case 'Q': pos->castling[1] = 1; break;
 		case 'k': pos->castling[2] = 1; break;
 		case 'q': pos->castling[3] = 1; break;
 		case '-': break;
-		default: z = 1; break;
 		}
+		fen++;
 	}
-	if (fen[i] != '-') {
-		const int sq = (fen[i] - 'a') + 8 * (fen[i + 1] - '1');
-		pos->ep = 1ull << sq;
-	}
+	fen++;
+	if (*fen != '-')
+		pos->ep = fen[0] - 'a' + 8 * (7 - (fen[1] - '1'));
 	while (*fen && *fen != ' ') fen++; fen++;
 	pos->move50 = atoi(fen);
 	if (flipped)
@@ -964,30 +961,30 @@ static int SearchAlpha(Position* pos, int alpha, int beta, int depth, int ply, S
 	if (inCheck)
 		depth = max(1, depth + 1);
 	int inQuiescence = depth < 1;
-	if (inQuiescence&& alpha < staticEval) {
+	if (inQuiescence && alpha < staticEval) {
 		alpha = staticEval;
 		if (alpha >= beta)
 			return beta;
 	}
 	const U64 hash = GetHash(pos);
 	if (ply && !inQuiescence)
-		if (pos->move50 >= 100 || IsRepetition(pos, hash))
+		if (pos->move50 > 99 + inCheck || IsRepetition(pos, hash))
 			return 0;
-	TTEntry* tt_entry = tt + (hash % tt_count);
+	TTEntry* ttEntry = tt + (hash % tt_count);
 	Move tt_move = { 0 };
-	if (tt_entry->hash == hash) {
-		tt_move = tt_entry->move;
-		if (alpha == beta - 1 && tt_entry->depth >= depth) {
-			if (tt_entry->flag == EXACT)return tt_entry->score;
-			if (tt_entry->flag == LOWER && tt_entry->score <= alpha)return tt_entry->score;
-			if (tt_entry->flag == UPPER && tt_entry->score >= beta)return tt_entry->score;
+	if (ttEntry->hash == hash) {
+		tt_move = ttEntry->move;
+		if (alpha == beta - 1 && ttEntry->depth >= depth) {
+			if (ttEntry->flag == EXACT)return ttEntry->score;
+			if (ttEntry->flag == LOWER && ttEntry->score <= alpha)return ttEntry->score;
+			if (ttEntry->flag == UPPER && ttEntry->score >= beta)return ttEntry->score;
 		}
 	}
 	else
 		depth -= depth > 3;
 	const int improving = ply > 1 && staticEval > stack[ply - 2].score;
-	if (tt_entry->hash == hash && tt_entry->flag != staticEval > tt_entry->score)
-		staticEval = tt_entry->score;
+	if (ttEntry->hash == hash && ttEntry->flag != staticEval > ttEntry->score)
+		staticEval = ttEntry->score;
 	const int inPv = beta - alpha > 1;
 	if (ply && !inQuiescence && !inCheck && !inPv) {
 
@@ -1085,11 +1082,11 @@ static int SearchAlpha(Position* pos, int alpha, int beta, int depth, int ply, S
 		return 0;
 	if (!legalMoves && !inQuiescence)
 		return inCheck ? ply - MATE : 0;
-	tt_entry->hash = hash;
-	tt_entry->move = stack[ply].move;
-	tt_entry->depth = max(0, depth);
-	tt_entry->score = alpha;
-	tt_entry->flag = tt_flag;
+	ttEntry->hash = hash;
+	ttEntry->move = stack[ply].move;
+	ttEntry->depth = max(0, depth);
+	ttEntry->score = alpha;
+	ttEntry->flag = tt_flag;
 	return alpha;
 }
 
@@ -1246,6 +1243,8 @@ static void UciCommand(Position* pos, char* line) {
 }
 
 static void UciLoop(Position* pos) {
+	//UciCommand(pos, "position fen 8/8/8/8/2R5/4r1k1/8/7K b - - 99 96");
+	//UciCommand(pos, "go depth 1");
 	char line[4000];
 	while (fgets(line, sizeof(line), stdin))
 		UciCommand(pos, line);
