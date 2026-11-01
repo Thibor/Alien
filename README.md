@@ -4,7 +4,7 @@
 <img src="/Resources/Alien.jpg" />
     <br>
     <br>
-    <b><i>Small uci chess engine 2250 elo.</i></b>
+    <b><i>Small uci chess engine 2600 elo.</i></b>
     <br>
     <br>
     <img src="https://img.shields.io/github/downloads/Thibor/Alien/total?color=critical&style=for-the-badge">
@@ -20,9 +20,11 @@ FIDE-rules-compliant chess engine
 
 ## Features
 
-- Single C file
+- Strength 2600 elo
+- Single file
 - Protocol UCI
-- Board: 10x12
+- Board 8 reversible bitboards
+- Evaluation 12 Piece Square Tables
 - En passant
 - Underpromotions (knight, bishop, rook)
 - Threefold repetition
